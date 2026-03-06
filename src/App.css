@@ -1,0 +1,9 @@
+/* App-level overrides — layout is handled by Tailwind in App.jsx */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
