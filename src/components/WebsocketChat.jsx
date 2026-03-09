@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import ChatWindow from './ChatWindow';
 import InputBar from './InputBar';
+import Canvas from './Canvas';
 
 const WS_URL = 'ws://localhost:3000';
 
@@ -34,6 +35,11 @@ export default function WebsocketChat() {
     const [token, setToken] = useState('');
     const [error, setError] = useState(null);
     const [isMuted, setIsMuted] = useState(true);
+
+    // Canvas State
+    const [canvasContent, setCanvasContent] = useState('');
+    const [isCanvasOpen, setIsCanvasOpen] = useState(false);
+    const [isCanvasWriting, setIsCanvasWriting] = useState(false);
 
     const wsRef = useRef(null);
     const audioContextRef = useRef(null);
@@ -251,7 +257,31 @@ export default function WebsocketChat() {
 
                     for (const part of parts) {
                         if (part.text) {
-                            setMessages((prev) => [...prev, { role: 'agent', text: part.text }]);
+                            // Real-time parsing for Canvas content
+                            // We look for ````canvas ... ```` blocks
+                            const rawText = part.text;
+                            
+                            if (rawText.includes('```canvas')) {
+                                setIsCanvasOpen(true);
+                                setIsCanvasWriting(true);
+                                const contentMatch = rawText.match(/```canvas([\s\S]*?)```/);
+                                if (contentMatch) {
+                                    setCanvasContent(contentMatch[1].trim());
+                                    setIsCanvasWriting(false);
+                                } else {
+                                    // Handle streaming case where the block isn't closed yet
+                                    const startingPart = rawText.split('```canvas')[1];
+                                    setCanvasContent(startingPart);
+                                }
+                            } else if (isCanvasWriting && !rawText.includes('```')) {
+                                // Append to canvas if we are in "writing" mode
+                                setCanvasContent(prev => prev + rawText);
+                            } else if (rawText.includes('```') && isCanvasWriting) {
+                                // End of canvas block
+                                setIsCanvasWriting(false);
+                            } else {
+                                setMessages((prev) => [...prev, { role: 'agent', text: rawText }]);
+                            }
                             setLoading(false);
                         }
 
@@ -280,7 +310,8 @@ export default function WebsocketChat() {
         ws.onclose = (event) => {
             console.log('WebSocket closed:', event.code, event.reason);
             setWsStatus('disconnected');
-            if (event.code !== 1000) {
+            // 1000: Normal Closure, 1005: No Status Received (intentional client-side close)
+            if (event.code !== 1000 && event.code !== 1005) {
                 setError(`WebSocket closed (${event.code}): ${event.reason || 'Unknown reason'}`);
             }
             stopRecording();
@@ -337,78 +368,103 @@ export default function WebsocketChat() {
     }, []);
 
     return (
-        <div className="flex flex-col h-full bg-gray-900 border-t border-gray-700">
-            {/* ── WebSocket Control Bar ───────────────────── */}
-            <div className="flex items-center justify-between p-4 bg-gray-800/80 border-b border-gray-700">
-                <div className="flex items-center gap-3 flex-1">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-400">Status:</span>
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${wsStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
-                            wsStatus === 'connecting' || wsStatus === 'authenticating' ? 'bg-yellow-500/20 text-yellow-400' :
-                                wsStatus === 'error' ? 'bg-red-500/20 text-red-400' :
-                                    'bg-gray-500/20 text-gray-400'
-                            }`}>
-                            {wsStatus.toUpperCase()}
-                        </span>
+        <div className="flex flex-row h-full overflow-hidden bg-transparent">
+            {/* ── Chat Container ──────────────────────────── */}
+            <div className={`flex flex-col flex-1 transition-all duration-500 ease-in-out ${isCanvasOpen ? 'w-[55%]' : 'w-full'}`}>
+                {/* ── WebSocket Control Bar ───────────────────── */}
+                <div className="flex items-center justify-between p-4 bg-white/5 border-b border-white/5 glass z-10">
+                    <div className="flex items-center gap-3 flex-1">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-400">Status:</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${wsStatus === 'connected' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' :
+                                wsStatus === 'connecting' || wsStatus === 'authenticating' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/20' :
+                                    wsStatus === 'error' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/20' :
+                                        'bg-slate-500/20 text-slate-400 border border-slate-500/20'
+                                }`}>
+                                {wsStatus.toUpperCase()}
+                            </span>
+                        </div>
+
+                        {(wsStatus === 'disconnected' || wsStatus === 'error') && (
+                            <input
+                                type="text"
+                                placeholder="Enter Google AI Studio API Key..."
+                                value={token}
+                                onChange={(e) => setToken(e.target.value)}
+                                className="px-3 py-1.5 bg-black/40 border border-white/10 rounded-xl text-sm flex-1 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-all font-mono"
+                            />
+                        )}
                     </div>
 
-                    {(wsStatus === 'disconnected' || wsStatus === 'error') && (
-                        <input
-                            type="text"
-                            placeholder="Enter Google AI Studio API Key..."
-                            value={token}
-                            onChange={(e) => setToken(e.target.value)}
-                            className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-sm flex-1 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-                        />
+                    <div className="ml-4 flex gap-2">
+                        {wsStatus === 'connected' && (
+                            <button
+                                onClick={toggleMute}
+                                className={`text-xs px-4 py-1.5 border rounded-full transition-all flex items-center gap-2 font-medium ${isMuted
+                                    ? 'bg-slate-700/30 text-slate-400 border-white/5 hover:bg-slate-700/50'
+                                    : 'bg-indigo-600 text-white border-indigo-500/50 shadow-[0_0_15px_rgba(79,70,229,0.3)]'
+                                    }`}
+                            >
+                                <span className={isMuted ? '' : 'animate-pulse'}>{isMuted ? '🎙️' : '🔘'}</span>
+                                {isMuted ? 'Speak' : 'Listening...'}
+                            </button>
+                        )}
+
+                        {wsStatus === 'connected' ? (
+                            <button
+                                onClick={disconnectWebSocket}
+                                className="text-xs px-4 py-1.5 bg-black/20 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded-full transition-all"
+                            >
+                                Disconnect
+                            </button>
+                        ) : (
+                            <button
+                                onClick={connectWebSocket}
+                                disabled={wsStatus === 'connecting' || wsStatus === 'authenticating'}
+                                className="text-xs px-4 py-1.5 bg-black/80 text-indigo-400 border border-indigo-500/20 hover:bg-black/50 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all font-medium"
+                            >
+                                Connect
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Error Banner ──────────────────────────────── */}
+                {error && (
+                    <div className="mx-4 mt-3 px-4 py-2 bg-rose-900/40 border border-rose-500/20 rounded-xl text-xs text-rose-300 flex items-center gap-2 animate-fade-in">
+                        <span>⚠️</span>
+                        <span className="flex-1">{error}</span>
+                        <button onClick={() => setError(null)} className="ml-auto text-rose-400 hover:text-white">✕</button>
+                    </div>
+                )}
+
+                {/* ── Chat Area ─────────────────────────────────── */}
+                <div className="flex-1 overflow-hidden flex flex-col relative">
+                    <ChatWindow messages={messages} loading={loading} />
+                    {isCanvasOpen && (
+                        <div className="absolute top-4 right-4 animate-fade-in">
+                             <button 
+                                onClick={() => setIsCanvasOpen(false)}
+                                className="p-2 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 text-slate-400 transition-all group"
+                                title="Close Canvas"
+                             >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-90 transition-transform"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                             </button>
+                        </div>
                     )}
                 </div>
 
-                <div className="ml-4 flex gap-2">
-                    {wsStatus === 'connected' && (
-                        <button
-                            onClick={toggleMute}
-                            className={`text-sm px-4 py-1.5 border rounded-lg transition-colors flex items-center gap-2 ${isMuted
-                                ? 'bg-gray-700/50 text-gray-300 border-gray-600 hover:bg-gray-700'
-                                : 'bg-indigo-600 text-white border-indigo-500 animate-pulse'
-                                }`}
-                        >
-                            {isMuted ? '🎙️ Speak' : '🎙️ Recording...'}
-                        </button>
-                    )}
-
-                    {wsStatus === 'connected' ? (
-                        <button
-                            onClick={disconnectWebSocket}
-                            className="text-sm px-4 py-1.5 bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600/30 rounded-lg transition-colors"
-                        >
-                            Disconnect
-                        </button>
-                    ) : (
-                        <button
-                            onClick={connectWebSocket}
-                            disabled={wsStatus === 'connecting' || wsStatus === 'authenticating'}
-                            className="text-sm px-4 py-1.5 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-                        >
-                            Connect
-                        </button>
-                    )}
-                </div>
+                {/* ── Input Bar ─────────────────────────────────── */}
+                <InputBar onSend={sendMessage} loading={loading || wsStatus !== 'connected'} />
             </div>
 
-            {/* ── Error Banner ──────────────────────────────── */}
-            {error && (
-                <div className="mx-4 mt-3 px-4 py-2 bg-red-900/50 border border-red-700 rounded-xl text-sm text-red-300 flex items-center gap-2">
-                    <span>⚠️</span>
-                    <span>{error}</span>
-                    <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-white">✕</button>
-                </div>
-            )}
-
-            {/* ── Chat Area ─────────────────────────────────── */}
-            <ChatWindow messages={messages} loading={loading} />
-
-            {/* ── Input Bar ─────────────────────────────────── */}
-            <InputBar onSend={sendMessage} loading={loading || wsStatus !== 'connected'} />
+            {/* ── Canvas Side Panel ───────────────────────── */}
+            <Canvas 
+                content={canvasContent} 
+                isOpen={isCanvasOpen} 
+                onClose={() => setIsCanvasOpen(false)}
+                isWriting={isCanvasWriting}
+            />
         </div>
     );
 }
