@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
+import WebsocketChat from './components/WebsocketChat';
 
 const API_URL = 'http://localhost:3000';
 
@@ -8,6 +10,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const location = useLocation();
 
   const sendMessage = async (text) => {
     // Append user message
@@ -36,7 +39,7 @@ function App() {
   const resetChat = async () => {
     try {
       await fetch(`${API_URL}/reset`, { method: 'POST' });
-    } catch (_) {
+    } catch {
       // silent fail – reset locally regardless
     }
     setMessages([]);
@@ -59,6 +62,29 @@ function App() {
             <p className="text-xs text-indigo-400">Gemini 2.0 Flash · Vertex AI</p>
           </div>
         </div>
+
+        {/* ── Navigation ──────────────────────────────── */}
+        <nav className="flex gap-2">
+          <Link
+            to="/"
+            className={`text-sm px-4 py-2 rounded-lg transition-colors ${location.pathname === '/'
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+              : 'text-gray-400 hover:text-white border border-transparent hover:border-gray-700'
+              }`}
+          >
+            HTTP Chat
+          </Link>
+          <Link
+            to="/socket"
+            className={`text-sm px-4 py-2 rounded-lg transition-colors ${location.pathname === '/socket'
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+              : 'text-gray-400 hover:text-white border border-transparent hover:border-gray-700'
+              }`}
+          >
+            WebSocket
+          </Link>
+        </nav>
+
         <button
           onClick={resetChat}
           className="text-xs text-gray-400 hover:text-white border border-gray-600 hover:border-gray-400 px-3 py-1.5 rounded-lg transition-colors"
@@ -76,11 +102,19 @@ function App() {
         </div>
       )}
 
-      {/* ── Chat Area ─────────────────────────────────── */}
-      <ChatWindow messages={messages} loading={loading} />
-
-      {/* ── Input Bar ─────────────────────────────────── */}
-      <InputBar onSend={sendMessage} loading={loading} />
+      {/* ── Routes ─────────────────────────────────── */}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <>
+              <ChatWindow messages={messages} loading={loading} />
+              <InputBar onSend={sendMessage} loading={loading} />
+            </>
+          }
+        />
+        <Route path="/socket" element={<WebsocketChat />} />
+      </Routes>
     </div>
   );
 }
