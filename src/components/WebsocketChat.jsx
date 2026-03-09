@@ -372,14 +372,14 @@ export default function WebsocketChat() {
             {/* ── Chat Container ──────────────────────────── */}
             <div className={`flex flex-col flex-1 transition-all duration-500 ease-in-out ${isCanvasOpen ? 'w-[55%]' : 'w-full'}`}>
                 {/* ── WebSocket Control Bar ───────────────────── */}
-                <div className="flex items-center justify-between p-4 bg-white/5 border-b border-white/5 glass z-10">
+                <div className="flex items-center justify-between p-4 bg-[var(--surface)] border-b border-[var(--border)] glass z-10">
                     <div className="flex items-center gap-3 flex-1">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-slate-400">Status:</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${wsStatus === 'connected' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' :
-                                wsStatus === 'connecting' || wsStatus === 'authenticating' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/20' :
-                                    wsStatus === 'error' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/20' :
-                                        'bg-slate-500/20 text-slate-400 border border-slate-500/20'
+                            <span className="text-sm text-[var(--text-muted)]">Status:</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${wsStatus === 'connected' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' :
+                                wsStatus === 'connecting' || wsStatus === 'authenticating' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' :
+                                    wsStatus === 'error' ? 'bg-rose-500/20 text-rose-500 border border-rose-500/20' :
+                                        'bg-[var(--surface-hover)] text-[var(--text-muted)] border border-[var(--border)]'
                                 }`}>
                                 {wsStatus.toUpperCase()}
                             </span>
@@ -387,11 +387,11 @@ export default function WebsocketChat() {
 
                         {(wsStatus === 'disconnected' || wsStatus === 'error') && (
                             <input
-                                type="text"
+                                type="password"
                                 placeholder="Enter Google AI Studio API Key..."
                                 value={token}
                                 onChange={(e) => setToken(e.target.value)}
-                                className="px-3 py-1.5 bg-black/40 border border-white/10 rounded-xl text-sm flex-1 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-all font-mono"
+                                className="px-3 py-1.5 bg-[var(--bg-deep)] border border-[var(--border)] rounded-xl text-sm flex-1 text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500/50 transition-all font-mono"
                             />
                         )}
                     </div>
@@ -401,7 +401,7 @@ export default function WebsocketChat() {
                             <button
                                 onClick={toggleMute}
                                 className={`text-xs px-4 py-1.5 border rounded-full transition-all flex items-center gap-2 font-medium ${isMuted
-                                    ? 'bg-slate-700/30 text-slate-400 border-white/5 hover:bg-slate-700/50'
+                                    ? 'bg-[var(--surface-hover)] text-[var(--text-muted)] border-[var(--border)] hover:bg-[var(--surface)]'
                                     : 'bg-indigo-600 text-white border-indigo-500/50 shadow-[0_0_15px_rgba(79,70,229,0.3)]'
                                     }`}
                             >
@@ -413,7 +413,7 @@ export default function WebsocketChat() {
                         {wsStatus === 'connected' ? (
                             <button
                                 onClick={disconnectWebSocket}
-                                className="text-xs px-4 py-1.5 bg-black/20 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded-full transition-all"
+                                className="text-xs px-4 py-1.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 rounded-full transition-all"
                             >
                                 Disconnect
                             </button>
@@ -421,7 +421,7 @@ export default function WebsocketChat() {
                             <button
                                 onClick={connectWebSocket}
                                 disabled={wsStatus === 'connecting' || wsStatus === 'authenticating'}
-                                className="text-xs px-4 py-1.5 bg-black/80 text-indigo-400 border border-indigo-500/20 hover:bg-black/50 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all font-medium"
+                                className="text-xs px-4 py-1.5 bg-[var(--text-main)] text-[var(--bg-deep)] border border-transparent hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all font-medium"
                             >
                                 Connect
                             </button>
@@ -431,10 +431,10 @@ export default function WebsocketChat() {
 
                 {/* ── Error Banner ──────────────────────────────── */}
                 {error && (
-                    <div className="mx-4 mt-3 px-4 py-2 bg-rose-900/40 border border-rose-500/20 rounded-xl text-xs text-rose-300 flex items-center gap-2 animate-fade-in">
+                    <div className="mx-4 mt-3 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-500 flex items-center gap-2 animate-fade-in font-medium">
                         <span>⚠️</span>
                         <span className="flex-1">{error}</span>
-                        <button onClick={() => setError(null)} className="ml-auto text-rose-400 hover:text-white">✕</button>
+                        <button onClick={() => setError(null)} className="ml-auto text-rose-500 hover:text-rose-600 transition-colors">✕</button>
                     </div>
                 )}
 

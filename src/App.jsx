@@ -4,6 +4,7 @@ import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
 import WebsocketChat from './components/WebsocketChat';
 import HistorySidebar from './components/HistorySidebar';
+import Canvas from './components/Canvas';
 import { useEffect } from 'react';
 
 const API_URL = 'http://localhost:3000';
@@ -18,8 +19,11 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('learnify_theme') || 'dark');
   const location = useLocation();
 
+  const [isCanvasOpen, setIsCanvasOpen] = useState(false);
+  const [canvasContent, setCanvasContent] = useState([]); // Now an array of blocks
+  const [isCanvasWriting, setIsCanvasWriting] = useState(false);
+
   const sendMessage = async (text) => {
-    // Append user message
     setMessages((prev) => [...prev, { role: 'user', text }]);
     setLoading(true);
     setError(null);
@@ -34,12 +38,66 @@ function App() {
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: 'agent', text: data.reply }]);
+      const reply = data.reply;
+      
+      // Multimodal Parsing
+      let finalChatResponse = reply;
+      
+      // 1. Check for Canvas Text blocks: ```canvas ... ```
+      if (reply.includes('```canvas')) {
+          setIsCanvasOpen(true);
+          const canvasMatch = reply.match(/```canvas([\s\S]*?)```/);
+          if (canvasMatch) {
+              const canvasText = canvasMatch[1].trim();
+              setCanvasContent(prev => [...prev, { type: 'text', value: canvasText }]);
+              finalChatResponse = finalChatResponse.replace(canvasMatch[0], '(I have added the details to your workspace canvas on the right)');
+          }
+      }
+
+      // 2. Check for Autonomous Image prompts: ```image: [prompt] ```
+      if (reply.includes('```image:')) {
+          const imageMatch = reply.match(/```image:\s*([\s\S]*?)```/);
+          if (imageMatch) {
+              const imagePrompt = imageMatch[1].trim();
+              generateImage(imagePrompt, true); // true = append to existing canvas content
+              finalChatResponse = finalChatResponse.replace(imageMatch[0], `(Generating visualization for: "${imagePrompt}")`);
+          }
+      }
+
+      setMessages((prev) => [...prev, { role: 'agent', text: finalChatResponse }]);
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateImage = async (prompt, append = false) => {
+      setIsCanvasOpen(true);
+      setIsCanvasWriting(true);
+      if (!append) setCanvasContent([]); 
+      setError(null);
+
+      try {
+          const res = await fetch(`${API_URL}/generate-image`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt }),
+          });
+
+          if (!res.ok) throw new Error('Image generation failed.');
+
+          const data = await res.json();
+          setCanvasContent(prev => [...prev, { type: 'image', value: data.imageUrl }]);
+          
+          if (!append) {
+            setMessages(prev => [...prev, { role: 'agent', text: `I've generated an image for you: **"${prompt}"**` }]);
+          }
+      } catch (err) {
+          setError(err.message);
+      } finally {
+          setIsCanvasWriting(false);
+      }
   };
 
   // Theme persistence and applying to root
@@ -142,15 +200,29 @@ function App() {
                     path="/"
                     element={
                     <div className="flex-1 flex flex-col relative overflow-hidden bg-[var(--bg-deep)]">
-                        {/* Top Model Selector */}
-                        <div className="p-4 flex items-center gap-2">
-                           <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-[var(--surface-hover)] transition-all group">
-                              <span className="text-[17px] font-bold text-[var(--text-main)]">Learnify</span>
-                              <svg className="text-[var(--text-muted)] group-hover:text-[var(--text-main)] transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                           </button>
+                        {/* Top Header */}
+                        <div className="p-4 flex items-center justify-between border-b border-[var(--border)]/30">
+                           <div className="flex items-center gap-2">
+                               <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-[var(--surface-hover)] transition-all group">
+                                  <span className="text-[17px] font-bold text-[var(--text-main)]">Learnify</span>
+                                  <svg className="text-[var(--text-muted)] group-hover:text-[var(--text-main)] transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                               </button>
+                           </div>
+
+                           {!isCanvasOpen && canvasContent.length > 0 && (
+                               <button 
+                                onClick={() => setIsCanvasOpen(true)}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold transition-all animate-fade-in border border-indigo-500/20"
+                               >
+                                  <span className="text-emerald-400">✨</span>
+                                  OPEN WORKSPACE
+                               </button>
+                           )}
                         </div>
 
-                        <div className="flex-1 overflow-y-auto px-4 CustomScrollbar">
+                        <div className="flex-1 flex flex-row overflow-hidden">
+                           <div className="flex-1 flex flex-col min-w-0">
+                                <div className="flex-1 overflow-y-auto px-4 CustomScrollbar">
                           {messages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in max-w-2xl mx-auto">
                               <h2 className="text-3xl font-bold text-[var(--text-main)] mb-10 tracking-tight">How can I help you today?</h2>
@@ -176,10 +248,19 @@ function App() {
                           )}
                         </div>
                         
-                        <InputBar onSend={sendMessage} loading={loading} />
-                        
-                        <div className="pb-4 pt-1 text-center">
-                           <p className="text-[10px] text-[var(--text-muted)] opacity-60">learnify can make mistakes. Check important info.</p>
+                                <InputBar onSend={sendMessage} loading={loading} onGenerate={generateImage} />
+                                
+                                <div className="pb-4 pt-1 text-center">
+                                   <p className="text-[10px] text-[var(--text-muted)] opacity-60">learnify can make mistakes. Check important info.</p>
+                                </div>
+                           </div>
+
+                           <Canvas 
+                                content={canvasContent} 
+                                isOpen={isCanvasOpen} 
+                                onClose={() => setIsCanvasOpen(false)}
+                                isWriting={isCanvasWriting}
+                            />
                         </div>
                     </div>
                     }
