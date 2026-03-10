@@ -31,7 +31,6 @@ export default function WebsocketChat() {
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
     const [wsStatus, setWsStatus] = useState('disconnected');
-    const [token, setToken] = useState('');
     const [error, setError] = useState(null);
     const [isMuted, setIsMuted] = useState(true);
 
@@ -193,11 +192,6 @@ export default function WebsocketChat() {
 
 
     const connectWebSocket = () => {
-        if (!token) {
-            setError('Please provide an API Key to connect.');
-            return;
-        }
-
         setError(null);
         setWsStatus('connecting');
 
@@ -205,43 +199,36 @@ export default function WebsocketChat() {
         wsRef.current = ws;
 
         ws.onopen = () => {
-            // AI Studio WebSocket URL using the API Key
-            const serviceUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${token}`;
-
+            // Send empty message to trigger proxy connection to Vertex AI
+            // Our index.js proxy will intercept this and attach the full GCP model path
             ws.send(JSON.stringify({
-                bearer_token: token,
-                service_url: serviceUrl
+                setup: {
+                    model: "gemini-live-2.5-flash-native-audio",
+                    systemInstruction: {
+                        parts: [{ text: "You are a helpful AI assistant. Be concise." }]
+                    },
+                    generationConfig: {
+                        responseModalities: ["AUDIO"]
+                    }
+                }
             }));
             setWsStatus('authenticating');
+
+            // We must initialize audio on a user gesture. 
+            // Since 'connect' is a user click, we init here.
+            initAudioPlayback();
         };
 
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
 
-                if (data.proxy_ready) {
+                if (data.setupComplete) {
                     setWsStatus('connected');
                     setMessages((prev) => [
                         ...prev,
-                        { role: 'agent', text: '[System]: Proxy connected and authenticated to Google AI Studio.' }
+                        { role: 'agent', text: '[System]: Connected to Vertex AI Live Agent.' }
                     ]);
-
-                    // Send the Gemini Realtime setup message
-                    wsRef.current.send(JSON.stringify({
-                        setup: {
-                            model: "models/gemini-2.5-flash-native-audio-latest",
-                            systemInstruction: {
-                                parts: [{ text: "You are a helpful AI assistant. Be concise." }]
-                            },
-                            generationConfig: {
-                                responseModalities: ["AUDIO"]
-                            }
-                        }
-                    }));
-
-                    // We must initialize audio on a user gesture. 
-                    // Since 'connect' is a user click, we init here.
-                    initAudioPlayback();
                     return;
                 }
 
@@ -352,15 +339,6 @@ export default function WebsocketChat() {
                         </span>
                     </div>
 
-                    {(wsStatus === 'disconnected' || wsStatus === 'error') && (
-                        <input
-                            type="text"
-                            placeholder="Enter Google AI Studio API Key..."
-                            value={token}
-                            onChange={(e) => setToken(e.target.value)}
-                            className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-sm flex-1 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-                        />
-                    )}
                 </div>
 
                 <div className="ml-4 flex gap-2">
