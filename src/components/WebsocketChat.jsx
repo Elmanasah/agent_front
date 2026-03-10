@@ -1,461 +1,147 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ChatWindow from './ChatWindow';
 import InputBar from './InputBar';
 import Canvas from './Canvas';
-
-const WS_URL = 'ws://localhost:3000';
-
-// Base64 encode helper
-function arrayBufferToBase64(buffer) {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-}
-
-// Base64 decode helper array to Int16Array
-function base64ToInt16Array(base64) {
-    const binary_string = window.atob(base64);
-    const len = binary_string.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-        bytes[i] = binary_string.charCodeAt(i);
-    }
-    return new Int16Array(bytes.buffer);
-}
-
+import { useGemini } from '../hooks/useGemini';
+import { useDevices } from '../hooks/useDevices';
 
 export default function WebsocketChat() {
-    const [messages, setMessages] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [wsStatus, setWsStatus] = useState('disconnected');
     const [token, setToken] = useState('');
-    const [error, setError] = useState(null);
-    const [isMuted, setIsMuted] = useState(true);
-
-    // Canvas State
-    const [canvasContent, setCanvasContent] = useState('');
     const [isCanvasOpen, setIsCanvasOpen] = useState(false);
+    const [canvasContent, setCanvasContent] = useState('');
     const [isCanvasWriting, setIsCanvasWriting] = useState(false);
+    const [showVision, setShowVision] = useState(false);
+    const [selectedCamera, setSelectedCamera] = useState('');
+    
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
 
-    const wsRef = useRef(null);
-    const audioContextRef = useRef(null);
-    const streamRef = useRef(null);
-    const workletNodeRef = useRef(null);
+    const {
+        status,
+        messages,
+        error,
+        micMuted,
+        connect,
+        disconnect,
+        toggleMic,
+        sendText,
+        startCamera,
+        stopCamera,
+        startScreen,
+        stopScreen,
+    } = useGemini();
 
-    // Playback state
-    const playbackContextRef = useRef(null);
-    const nextPlayTimeRef = useRef(0);
+    const { cameras } = useDevices();
 
-
-
-    const toggleMute = async () => {
-        if (isMuted) {
-            await startRecording();
-        } else {
-            stopRecording();
-        }
-    };
-
-    const initAudioPlayback = () => {
-        if (!playbackContextRef.current) {
-            // GCP Vertex AI multimodal audio is 24kHz
-            playbackContextRef.current = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 24000
-            });
-            nextPlayTimeRef.current = playbackContextRef.current.currentTime;
-        }
-        if (playbackContextRef.current.state === 'suspended') {
-            playbackContextRef.current.resume();
-        }
-    };
-
-    const startRecording = async () => {
-        if (wsStatus !== 'connected') {
-            setError('Please connect to WebSocket first.');
-            return;
-        }
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                }
-            });
-            streamRef.current = stream;
-
-            const context = new (window.AudioContext || window.webkitAudioContext)({
-                // GCP expected input sample rate
-                sampleRate: 16000
-            });
-            audioContextRef.current = context;
-
-            const source = context.createMediaStreamSource(stream);
-
-            // Register and load a simple AudioWorklet to capture raw PCM
-            // Inline worklet as a Blob to avoid serving a separate file
-            const workletCode = `
-                class RecorderProcessor extends AudioWorkletProcessor {
-                    process(inputs) {
-                        const input = inputs[0];
-                        if (input.length > 0) {
-                            const pcmFloat32 = input[0];
-                            this.port.postMessage(pcmFloat32);
-                        }
-                        return true;
-                    }
-                }
-                registerProcessor('recorder-worklet', RecorderProcessor);
-            `;
-            const blob = new Blob([workletCode], { type: 'application/javascript' });
-            const blobUrl = URL.createObjectURL(blob);
-
-            await context.audioWorklet.addModule(blobUrl);
-
-            const workletNode = new AudioWorkletNode(context, 'recorder-worklet');
-            workletNodeRef.current = workletNode;
-
-            workletNode.port.onmessage = (event) => {
-                const float32Data = event.data;
-
-                // Convert Float32 to Int16
-                const pcm16 = new Int16Array(float32Data.length);
-                for (let i = 0; i < float32Data.length; i++) {
-                    const s = Math.max(-1, Math.min(1, float32Data[i]));
-                    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                }
-
-                // Send to Websocket
-                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    const base64Data = arrayBufferToBase64(pcm16.buffer);
-                    wsRef.current.send(JSON.stringify({
-                        realtimeInput: {
-                            mediaChunks: [{
-                                mimeType: "audio/pcm;rate=16000",
-                                data: base64Data
-                            }]
-                        }
-                    }));
-                }
-            };
-
-            source.connect(workletNode);
-            workletNode.connect(context.destination);
-
-            setIsMuted(false);
-            initAudioPlayback(); // Ensure playback context is ready
-        } catch (err) {
-            console.error(err);
-            setError('Could not access microphone: ' + err.message);
-        }
-    };
-
-    const stopRecording = () => {
-        if (workletNodeRef.current) {
-            workletNodeRef.current.disconnect();
-            workletNodeRef.current = null;
-        }
-        if (audioContextRef.current) {
-            audioContextRef.current.close().catch(() => { });
-            audioContextRef.current = null;
-        }
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        setIsMuted(true);
-    };
-
-    const playAudioBuffer = (int16Array) => {
-        const ctx = playbackContextRef.current;
-        if (!ctx) return;
-
-        // Convert Int16 to Float32
-        const float32Array = new Float32Array(int16Array.length);
-        for (let i = 0; i < int16Array.length; i++) {
-            float32Array[i] = int16Array[i] / 32768.0;
-        }
-
-        const audioBuffer = ctx.createBuffer(1, float32Array.length, 24000);
-        audioBuffer.getChannelData(0).set(float32Array);
-
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-
-        const currentTime = ctx.currentTime;
-        if (nextPlayTimeRef.current < currentTime) {
-            nextPlayTimeRef.current = currentTime;
-        }
-
-        source.start(nextPlayTimeRef.current);
-        nextPlayTimeRef.current += audioBuffer.duration;
-    };
-
-
-    const connectWebSocket = () => {
-        if (!token) {
-            setError('Please provide an API Key to connect.');
-            return;
-        }
-
-        setError(null);
-        setWsStatus('connecting');
-
-        const ws = new WebSocket(WS_URL);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-            // AI Studio WebSocket URL using the API Key
-            const serviceUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${token}`;
-
-            ws.send(JSON.stringify({
-                bearer_token: token,
-                service_url: serviceUrl
-            }));
-            setWsStatus('authenticating');
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-
-                if (data.proxy_ready) {
-                    setWsStatus('connected');
-                    setMessages((prev) => [
-                        ...prev,
-                        { role: 'agent', text: '[System]: Proxy connected and authenticated to Google AI Studio.' }
-                    ]);
-
-                    // Send the Gemini Realtime setup message
-                    wsRef.current.send(JSON.stringify({
-                        setup: {
-                            model: "models/gemini-2.5-flash-native-audio-latest",
-                            systemInstruction: {
-                                parts: [{ text: "You are a helpful AI assistant. Be concise." }]
-                            },
-                            generationConfig: {
-                                responseModalities: ["AUDIO"]
-                            }
-                        }
-                    }));
-
-                    // We must initialize audio on a user gesture. 
-                    // Since 'connect' is a user click, we init here.
-                    initAudioPlayback();
-                    return;
-                }
-
-                // Handle server response
-                if (data?.serverContent?.modelTurn?.parts) {
-                    const parts = data.serverContent.modelTurn.parts;
-
-                    for (const part of parts) {
-                        if (part.text) {
-                            // Real-time parsing for Canvas content
-                            // We look for ````canvas ... ```` blocks
-                            const rawText = part.text;
-                            
-                            if (rawText.includes('```canvas')) {
-                                setIsCanvasOpen(true);
-                                setIsCanvasWriting(true);
-                                const contentMatch = rawText.match(/```canvas([\s\S]*?)```/);
-                                if (contentMatch) {
-                                    setCanvasContent(contentMatch[1].trim());
-                                    setIsCanvasWriting(false);
-                                } else {
-                                    // Handle streaming case where the block isn't closed yet
-                                    const startingPart = rawText.split('```canvas')[1];
-                                    setCanvasContent(startingPart);
-                                }
-                            } else if (isCanvasWriting && !rawText.includes('```')) {
-                                // Append to canvas if we are in "writing" mode
-                                setCanvasContent(prev => prev + rawText);
-                            } else if (rawText.includes('```') && isCanvasWriting) {
-                                // End of canvas block
-                                setIsCanvasWriting(false);
-                            } else {
-                                setMessages((prev) => [...prev, { role: 'agent', text: rawText }]);
-                            }
-                            setLoading(false);
-                        }
-
-                        // Handle server audio output
-                        if (part.inlineData && part.inlineData.mimeType.startsWith('audio/pcm')) {
-                            const base64Data = part.inlineData.data;
-                            const int16Pcm = base64ToInt16Array(base64Data);
-                            playAudioBuffer(int16Pcm);
-                            setLoading(false);
-                        }
-                    }
-                }
-            } catch {
-                setMessages((prev) => [...prev, { role: 'agent', text: event.data }]);
-                setLoading(false);
-            }
-        };
-
-        ws.onerror = (err) => {
-            console.error('WebSocket error:', err);
-            setError('WebSocket connection error.');
-            setWsStatus('error');
-            stopRecording();
-        };
-
-        ws.onclose = (event) => {
-            console.log('WebSocket closed:', event.code, event.reason);
-            setWsStatus('disconnected');
-            // 1000: Normal Closure, 1005: No Status Received (intentional client-side close)
-            if (event.code !== 1000 && event.code !== 1005) {
-                setError(`WebSocket closed (${event.code}): ${event.reason || 'Unknown reason'}`);
-            }
-            stopRecording();
-        };
-    };
-
-    const disconnectWebSocket = () => {
-        if (wsRef.current) {
-            wsRef.current.close();
-            wsRef.current = null;
-        }
-        setWsStatus('disconnected');
-        stopRecording();
-    };
-
-    const sendMessage = (text) => {
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-            setError('WebSocket is not connected.');
-            return;
-        }
-
-        setMessages((prev) => [...prev, { role: 'user', text }]);
-        setLoading(true);
-        setError(null);
-
-        try {
-            wsRef.current.send(JSON.stringify({
-                clientContent: {
-                    turns: [
-                        {
-                            role: 'user',
-                            parts: [{ text }]
-                        }
-                    ],
-                    turnComplete: true
-                }
-            }));
-        } catch (err) {
-            setError('Failed to send message: ' + err.message);
-            setLoading(false);
-        }
-    };
-
-    // Cleanup on unmount
+    // Sync canvas content from messages (simplified for this refactor)
     useEffect(() => {
-        return () => {
-            disconnectWebSocket();
-            stopRecording();
-            if (playbackContextRef.current) {
-                playbackContextRef.current.close().catch(() => { });
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage?.role === 'assistant' && lastMessage.text.includes('```canvas')) {
+            setIsCanvasOpen(true);
+            const match = lastMessage.text.match(/```canvas([\s\S]*?)```/);
+            if (match) {
+                setCanvasContent(match[1].trim());
             }
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        }
+    }, [messages]);
+
+    const handleConnect = async () => {
+        try {
+            // 1. Fetch GCP Config
+            const configResp = await fetch('http://localhost:3000/config');
+            const { projectId, location } = await configResp.json();
+
+            // 2. Fetch Access Token
+            const tokenResp = await fetch('http://localhost:3000/token');
+            const { token: accessToken } = await tokenResp.json();
+
+            if (!projectId || !accessToken) {
+                throw new Error('Missing GCP configuration or token');
+            }
+
+            // 3. Connect
+            connect({
+                accessToken,
+                projectId,
+                location,
+                systemInstructions: 'You are a helpful AI assistant with vision. You use the Canvas for complex work.',
+            });
+        } catch (err) {
+            console.error('Failed to connect to Vertex AI:', err);
+        }
+    };
 
     return (
         <div className="flex flex-row h-full overflow-hidden bg-transparent">
             {/* ── Chat Container ──────────────────────────── */}
             <div className={`flex flex-col flex-1 transition-all duration-500 ease-in-out ${isCanvasOpen ? 'w-[55%]' : 'w-full'}`}>
-                {/* ── WebSocket Control Bar ───────────────────── */}
+                {/* ── Control Bar ───────────────────── */}
                 <div className="flex items-center justify-between p-4 bg-[var(--surface)] border-b border-[var(--border)] glass z-10">
                     <div className="flex items-center gap-3 flex-1">
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-[var(--text-muted)]">Status:</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${wsStatus === 'connected' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' :
-                                wsStatus === 'connecting' || wsStatus === 'authenticating' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' :
-                                    wsStatus === 'error' ? 'bg-rose-500/20 text-rose-500 border border-rose-500/20' :
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${status === 'connected' || status === 'speaking' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' :
+                                status === 'connecting' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' :
+                                    error ? 'bg-rose-500/20 text-rose-500 border border-rose-500/20' :
                                         'bg-[var(--surface-hover)] text-[var(--text-muted)] border border-[var(--border)]'
                                 }`}>
-                                {wsStatus.toUpperCase()}
+                                {status.toUpperCase()}
                             </span>
                         </div>
 
-                        {(wsStatus === 'disconnected' || wsStatus === 'error') && (
-                            <input
-                                type="password"
-                                placeholder="Enter Google AI Studio API Key..."
-                                value={token}
-                                onChange={(e) => setToken(e.target.value)}
-                                className="px-3 py-1.5 bg-[var(--bg-deep)] border border-[var(--border)] rounded-xl text-sm flex-1 text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500/50 transition-all font-mono"
-                            />
+                        {status === 'disconnected' && (
+                            <div className="text-sm text-[var(--text-muted)] italic">
+                                Ready to connect to Google Cloud Vertex AI
+                            </div>
+                        )}
+
+                        {status === 'connected' && (
+                           <div className="flex gap-2">
+                              <select 
+                                onChange={(e) => setSelectedCamera(e.target.value)}
+                                className="bg-[var(--bg-deep)] border border-[var(--border)] rounded-lg text-xs p-1"
+                              >
+                                {cameras.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              </select>
+                              <button onClick={() => { setShowVision(!showVision); startCamera(videoRef.current, canvasRef.current, selectedCamera); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-400 rounded-lg">📷 Cam</button>
+                              <button onClick={() => { setShowVision(!showVision); startScreen(videoRef.current, canvasRef.current); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-400 rounded-lg">🖥️ Screen</button>
+                           </div>
                         )}
                     </div>
 
                     <div className="ml-4 flex gap-2">
-                        {wsStatus === 'connected' && (
+                        {status !== 'disconnected' && (
                             <button
-                                onClick={toggleMute}
-                                className={`text-xs px-4 py-1.5 border rounded-full transition-all flex items-center gap-2 font-medium ${isMuted
-                                    ? 'bg-[var(--surface-hover)] text-[var(--text-muted)] border-[var(--border)] hover:bg-[var(--surface)]'
-                                    : 'bg-indigo-600 text-white border-indigo-500/50 shadow-[0_0_15px_rgba(79,70,229,0.3)]'
-                                    }`}
+                                onClick={toggleMic}
+                                className={`text-xs px-4 py-1.5 border rounded-full transition-all flex items-center gap-2 ${micMuted ? 'bg-[var(--surface-hover)]' : 'bg-indigo-600 text-white'}`}
                             >
-                                <span className={isMuted ? '' : 'animate-pulse'}>{isMuted ? '🎙️' : '🔘'}</span>
-                                {isMuted ? 'Speak' : 'Listening...'}
+                                {micMuted ? '🎙️ Muted' : '🎙️ Live'}
                             </button>
                         )}
 
-                        {wsStatus === 'connected' ? (
-                            <button
-                                onClick={disconnectWebSocket}
-                                className="text-xs px-4 py-1.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 rounded-full transition-all"
-                            >
-                                Disconnect
-                            </button>
-                        ) : (
-                            <button
-                                onClick={connectWebSocket}
-                                disabled={wsStatus === 'connecting' || wsStatus === 'authenticating'}
-                                className="text-xs px-4 py-1.5 bg-[var(--text-main)] text-[var(--bg-deep)] border border-transparent hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all font-medium"
-                            >
-                                Connect
-                            </button>
-                        )}
+                        <button
+                            onClick={status === 'disconnected' ? handleConnect : disconnect}
+                            className={`text-xs px-4 py-1.5 rounded-full transition-all ${status === 'disconnected' ? 'bg-[var(--text-main)] text-[var(--bg-deep)]' : 'bg-rose-500/10 text-rose-500'}`}
+                        >
+                            {status === 'disconnected' ? 'Connect' : 'Disconnect'}
+                        </button>
                     </div>
                 </div>
 
-                {/* ── Error Banner ──────────────────────────────── */}
-                {error && (
-                    <div className="mx-4 mt-3 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-500 flex items-center gap-2 animate-fade-in font-medium">
-                        <span>⚠️</span>
-                        <span className="flex-1">{error}</span>
-                        <button onClick={() => setError(null)} className="ml-auto text-rose-500 hover:text-rose-600 transition-colors">✕</button>
-                    </div>
-                )}
+                {/* ── Vision Area ─────────────────────────────── */}
+                <div className={`${showVision ? 'h-48' : 'h-0'} transition-all overflow-hidden bg-black relative`}>
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain" />
+                    <canvas ref={canvasRef} className="hidden" />
+                    <button onClick={() => { setShowVision(false); stopCamera(); stopScreen(); }} className="absolute top-2 right-2 text-white bg-black/50 rounded-full p-1">✕</button>
+                </div>
 
                 {/* ── Chat Area ─────────────────────────────────── */}
                 <div className="flex-1 overflow-hidden flex flex-col relative">
-                    <ChatWindow messages={messages} loading={loading} />
-                    {isCanvasOpen && (
-                        <div className="absolute top-4 right-4 animate-fade-in">
-                             <button 
-                                onClick={() => setIsCanvasOpen(false)}
-                                className="p-2 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 text-slate-400 transition-all group"
-                                title="Close Canvas"
-                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-90 transition-transform"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                             </button>
-                        </div>
-                    )}
+                    <ChatWindow messages={messages} loading={status === 'connecting'} />
                 </div>
 
                 {/* ── Input Bar ─────────────────────────────────── */}
-                <InputBar onSend={sendMessage} loading={loading || wsStatus !== 'connected'} />
+                <InputBar onSend={sendText} loading={status === 'connecting'} />
             </div>
 
             {/* ── Canvas Side Panel ───────────────────────── */}
