@@ -23,8 +23,8 @@ function App() {
   const [canvasContent, setCanvasContent] = useState([]); // Now an array of blocks
   const [isCanvasWriting, setIsCanvasWriting] = useState(false);
 
-  const sendMessage = async (text) => {
-    setMessages((prev) => [...prev, { role: 'user', text }]);
+  const sendMessage = async (text, attachments = []) => {
+    setMessages((prev) => [...prev, { role: 'user', text, attachments }]);
     setLoading(true);
     setError(null);
 
@@ -32,7 +32,7 @@ function App() {
       const res = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, attachments }),
       });
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -171,7 +171,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-transparent text-slate-100 font-sans selection:bg-indigo-500/30 overflow-hidden">
+    <div className="flex flex-col h-screen bg-transparent text-[var(--text-main)] font-sans selection:bg-indigo-500/30 selection:text-current overflow-hidden">
       {/* ── Main Content ─────────────────────────────── */}
       <main className="flex-1 flex flex-row relative overflow-hidden bg-transparent">
         {/* ── History Sidebar (Left) ──────────────────── */}

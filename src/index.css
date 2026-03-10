@@ -71,3 +71,8 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
 }
+
+::selection {
+  background-color: hsla(245, 80%, 65%, 0.25);
+  color: inherit;
+}

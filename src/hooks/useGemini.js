@@ -129,10 +129,31 @@ export function useGemini() {
   }, []);
 
   const sendText = useCallback(
-    (text) => {
-      if (!text.trim()) return;
+    async (text, attachments = []) => {
+      if (!text.trim() && attachments.length === 0) return;
+      
+      // Add user message to UI
       addMessage("user", text);
-      geminiRef.current?.sendText(text);
+
+      try {
+        // If we have attachments, we'll use the backend /chat endpoint 
+        // because standard Vertex AI API handles files better than the Bidi protocol for one-off uploads
+        const response = await fetch('http://localhost:3000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, attachments })
+        });
+
+        if (!response.ok) throw new Error('Failed to send message');
+        const data = await response.json();
+        
+        if (data.reply) {
+          addMessage("assistant", data.reply);
+        }
+      } catch (err) {
+        console.error('[sendText Error]:', err);
+        setError("Failed to send message: " + err.message);
+      }
     },
     [addMessage]
   );
