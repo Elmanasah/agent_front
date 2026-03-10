@@ -76,21 +76,21 @@ export default function WebsocketChat() {
             {/* ── Chat Container ──────────────────────────── */}
             <div className={`flex flex-col flex-1 transition-all duration-500 ease-in-out ${isCanvasOpen ? 'w-[55%]' : 'w-full'}`}>
                 {/* ── Control Bar ───────────────────── */}
-                <div className="flex items-center justify-between p-4 bg-[var(--surface)] border-b border-[var(--border)] glass z-10">
+                <div className="flex items-center justify-between p-4 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-white/10 glass z-10">
                     <div className="flex items-center gap-3 flex-1">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-[var(--text-muted)]">Status:</span>
+                            <span className="text-sm text-slate-500 dark:text-slate-400">Status:</span>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${status === 'connected' || status === 'speaking' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' :
                                 status === 'connecting' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' :
                                     error ? 'bg-rose-500/20 text-rose-500 border border-rose-500/20' :
-                                        'bg-[var(--surface-hover)] text-[var(--text-muted)] border border-[var(--border)]'
+                                        'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10'
                                 }`}>
                                 {status.toUpperCase()}
                             </span>
                         </div>
 
                         {status === 'disconnected' && (
-                            <div className="text-sm text-[var(--text-muted)] italic">
+                            <div className="text-sm text-slate-400 dark:text-slate-500 italic">
                                 Ready to connect to Google Cloud Vertex AI
                             </div>
                         )}
@@ -99,12 +99,12 @@ export default function WebsocketChat() {
                            <div className="flex gap-2">
                               <select 
                                 onChange={(e) => setSelectedCamera(e.target.value)}
-                                className="bg-[var(--bg-deep)] border border-[var(--border)] rounded-lg text-xs p-1"
+                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs p-1 text-slate-800 dark:text-slate-200"
                               >
                                 {cameras.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                               </select>
-                              <button onClick={() => { setShowVision(!showVision); startCamera(videoRef.current, canvasRef.current, selectedCamera); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-400 rounded-lg">📷 Cam</button>
-                              <button onClick={() => { setShowVision(!showVision); startScreen(videoRef.current, canvasRef.current); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-400 rounded-lg">🖥️ Screen</button>
+                              <button onClick={() => { setShowVision(!showVision); startCamera(videoRef.current, canvasRef.current, selectedCamera); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">📷 Cam</button>
+                              <button onClick={() => { setShowVision(!showVision); startScreen(videoRef.current, canvasRef.current); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">🖥️ Screen</button>
                            </div>
                         )}
                     </div>
@@ -113,7 +113,7 @@ export default function WebsocketChat() {
                         {status !== 'disconnected' && (
                             <button
                                 onClick={toggleMic}
-                                className={`text-xs px-4 py-1.5 border rounded-full transition-all flex items-center gap-2 ${micMuted ? 'bg-[var(--surface-hover)]' : 'bg-indigo-600 text-white'}`}
+                                className={`text-xs px-4 py-1.5 border rounded-full transition-all flex items-center gap-2 ${micMuted ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400' : 'bg-indigo-600 text-white border-transparent shadow-lg shadow-indigo-500/20'}`}
                             >
                                 {micMuted ? '🎙️ Muted' : '🎙️ Live'}
                             </button>
@@ -121,7 +121,7 @@ export default function WebsocketChat() {
 
                         <button
                             onClick={status === 'disconnected' ? handleConnect : disconnect}
-                            className={`text-xs px-4 py-1.5 rounded-full transition-all ${status === 'disconnected' ? 'bg-[var(--text-main)] text-[var(--bg-deep)]' : 'bg-rose-500/10 text-rose-500'}`}
+                            className={`text-xs px-4 py-1.5 rounded-full font-medium transition-all ${status === 'disconnected' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg shadow-black/10' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}
                         >
                             {status === 'disconnected' ? 'Connect' : 'Disconnect'}
                         </button>
@@ -132,7 +132,7 @@ export default function WebsocketChat() {
                 <div className={`${showVision ? 'h-48' : 'h-0'} transition-all overflow-hidden bg-black relative`}>
                     <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain" />
                     <canvas ref={canvasRef} className="hidden" />
-                    <button onClick={() => { setShowVision(false); stopCamera(); stopScreen(); }} className="absolute top-2 right-2 text-white bg-black/50 rounded-full p-1">✕</button>
+                    <button onClick={() => { setShowVision(false); stopCamera(); stopScreen(); }} className="absolute top-2 right-2 text-white bg-black/50 rounded-full p-1 hover:bg-black/70 transition-colors">✕</button>
                 </div>
 
                 {/* ── Chat Area ─────────────────────────────────── */}
@@ -141,7 +141,9 @@ export default function WebsocketChat() {
                 </div>
 
                 {/* ── Input Bar ─────────────────────────────────── */}
-                <InputBar onSend={sendText} loading={status === 'connecting'} />
+                <div className="p-4 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
+                    <InputBar onSend={sendText} loading={status === 'connecting'} />
+                </div>
             </div>
 
             {/* ── Canvas Side Panel ───────────────────────── */}

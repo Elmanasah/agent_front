@@ -98,9 +98,9 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
                                 {file.isImage ? (
                                     <img src={file.url} alt="preview" className="w-16 h-16 object-cover rounded-lg border border-[var(--border)]" />
                                 ) : (
-                                    <div className="w-16 h-16 flex flex-col items-center justify-center bg-[var(--surface)] rounded-lg border border-[var(--border)] p-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-muted)]"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                        <span className="text-[10px] text-[var(--text-muted)] truncate w-full text-center mt-1 px-1">{file.name}</span>
+                                    <div className="w-16 h-16 flex flex-col items-center justify-center bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 p-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 dark:text-slate-500"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate w-full text-center mt-1 px-1">{file.name}</span>
                                     </div>
                                 )}
                                 <button 
@@ -114,7 +114,7 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
                     </div>
                 )}
 
-                <div className="flex items-center gap-3 bg-[var(--surface-hover)] border border-[var(--border)] rounded-[2rem] px-4 py-2 shadow-sm transition-all focus-within:border-[var(--text-muted)] group">
+                <div className="flex items-center gap-3 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2rem] px-4 py-2 shadow-sm transition-all focus-within:border-slate-400 dark:focus-within:border-white/20 group">
                     <input 
                         type="file" 
                         ref={fileInputRef} 
@@ -125,7 +125,7 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
                     />
                     <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-8 h-8 rounded-full hover:bg-[var(--surface)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors" 
+                        className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" 
                         title="Attach files (Images, PDFs, Text)"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -140,20 +140,20 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
                         onChange={(e) => setText(e.target.value)}
                         placeholder="Ask anything..."
                         disabled={loading}
-                        className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] text-[15px] resize-none focus:outline-none py-2.5 max-h-48 disabled:opacity-50 font-sans"
+                        className="flex-1 bg-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-[15px] resize-none focus:outline-none py-2.5 max-h-48 disabled:opacity-50 font-sans"
                     />
 
                     <div className="flex items-center gap-1 self-center">
                         <button 
                             onClick={handleGenerate}
                             disabled={!text.trim() || loading}
-                            className="w-8 h-8 rounded-full hover:bg-[var(--surface)] flex items-center justify-center text-[var(--text-muted)] hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                             title="Generate Image"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3 1.912 5.886L20 10.8l-6.088 1.914L12 18.6l-1.912-5.886L4 10.8l6.088-1.914z"/><path d="M5 3 6.13 6.47 9.6 7.6 6.13 8.73 5 12.2 3.87 8.73 0.4 7.6 3.87 6.47z"/><path d="M19 16l1.13 3.47 3.47 1.13-3.47 1.13L19 25.2l-1.13-3.47-3.47-1.13 3.47-1.13z"/></svg>
                         </button>
                         
-                        <button className="w-8 h-8 rounded-full hover:bg-[var(--surface)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                        <button className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                         </button>
                         
@@ -162,8 +162,8 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
                             disabled={(!text.trim() && attachments.length === 0) || loading}
                             className={`w-8 h-8 rounded-full transition-all flex items-center justify-center shrink-0 ${
                                 text.trim() || attachments.length > 0
-                                ? 'bg-[var(--text-main)] text-[var(--bg-deep)]' 
-                                : 'bg-[var(--border)] text-[var(--text-muted)] cursor-not-allowed'
+                                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' 
+                                : 'bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                             }`}
                         >
                             {loading ? (

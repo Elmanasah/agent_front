@@ -100,9 +100,15 @@ function App() {
       }
   };
 
-  // Theme persistence and applying to root
+  // Theme persistence and applying to root for Tailwind dark mode
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.style.colorScheme = 'light';
+    }
     localStorage.setItem('learnify_theme', theme);
   }, [theme]);
 
@@ -171,7 +177,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-transparent text-[var(--text-main)] font-sans selection:bg-indigo-500/30 selection:text-current overflow-hidden">
+    <div className="flex flex-col h-screen bg-transparent text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 selection:text-current overflow-hidden">
       {/* ── Main Content ─────────────────────────────── */}
       <main className="flex-1 flex flex-row relative overflow-hidden bg-transparent">
         {/* ── History Sidebar (Left) ──────────────────── */}
@@ -199,13 +205,13 @@ function App() {
                 <Route
                     path="/"
                     element={
-                    <div className="flex-1 flex flex-col relative overflow-hidden bg-[var(--bg-deep)]">
+                    <div className="flex-1 flex flex-col relative overflow-hidden bg-white dark:bg-slate-950">
                         {/* Top Header */}
-                        <div className="p-4 flex items-center justify-between border-b border-[var(--border)]/30">
+                        <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-white/10">
                            <div className="flex items-center gap-2">
-                               <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-[var(--surface-hover)] transition-all group">
-                                  <span className="text-[17px] font-bold text-[var(--text-main)]">Learnify</span>
-                                  <svg className="text-[var(--text-muted)] group-hover:text-[var(--text-main)] transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                               <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group">
+                                  <span className="text-[17px] font-bold text-slate-900 dark:text-white">Learnify</span>
+                                  <svg className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                </button>
                            </div>
 
@@ -225,13 +231,13 @@ function App() {
                                 <div className="flex-1 overflow-y-auto px-4 CustomScrollbar">
                           {messages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in max-w-2xl mx-auto">
-                              <h2 className="text-3xl font-bold text-[var(--text-main)] mb-10 tracking-tight">How can I help you today?</h2>
+                              <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">How can I help you today?</h2>
                               
-                              <div className="grid grid-cols-2 gap-3 w-full max-w-2xl">
+                              <div className="grid grid-cols-2 gap-3 w-full max-w-2xl px-6">
                                  {['Help me write', 'Code together', 'Summarize text', 'Analyze data'].map(label => (
-                                   <button key={label} onClick={() => sendMessage(label)} className="p-4 rounded-2xl border border-[var(--border)] hover:bg-[var(--surface-hover)] text-left transition-all group">
-                                      <span className="text-[13px] font-medium text-[var(--text-main)] block mb-1">{label}</span>
-                                      <span className="text-[11px] text-[var(--text-muted)] block">Start a conversation</span>
+                                   <button key={label} onClick={() => sendMessage(label)} className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-left transition-all group shadow-sm">
+                                      <span className="text-[13px] font-medium text-slate-900 dark:text-white block mb-1">{label}</span>
+                                      <span className="text-[11px] text-slate-400 dark:text-slate-500 block">Start a conversation</span>
                                    </button>
                                  ))}
                               </div>
@@ -240,7 +246,7 @@ function App() {
                             <div className="max-w-3xl mx-auto">
                               <ChatWindow messages={messages} />
                               {loading && (
-                                <div className="flex items-center gap-2 p-4 animate-pulse text-[var(--text-muted)] text-[12px] italic">
+                                <div className="flex items-center gap-2 p-4 animate-pulse text-slate-400 dark:text-slate-500 text-[12px] italic">
                                   AI is writing...
                                 </div>
                               )}
@@ -251,7 +257,7 @@ function App() {
                                 <InputBar onSend={sendMessage} loading={loading} onGenerate={generateImage} />
                                 
                                 <div className="pb-4 pt-1 text-center">
-                                   <p className="text-[10px] text-[var(--text-muted)] opacity-60">learnify can make mistakes. Check important info.</p>
+                                   <p className="text-[10px] text-slate-400 dark:text-slate-500 opacity-60">learnify can make mistakes. Check important info.</p>
                                 </div>
                            </div>
 
