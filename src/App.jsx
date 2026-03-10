@@ -3,6 +3,9 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
 import WebsocketChat from './components/WebsocketChat';
+import HistorySidebar from './components/HistorySidebar';
+import Canvas from './components/Canvas';
+import { useEffect } from 'react';
 
 const API_URL = 'http://localhost:3000';
 
@@ -10,10 +13,17 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [theme, setTheme] = useState(localStorage.getItem('learnify_theme') || 'dark');
   const location = useLocation();
 
+  const [isCanvasOpen, setIsCanvasOpen] = useState(false);
+  const [canvasContent, setCanvasContent] = useState([]); // Now an array of blocks
+  const [isCanvasWriting, setIsCanvasWriting] = useState(false);
+
   const sendMessage = async (text) => {
-    // Append user message
     setMessages((prev) => [...prev, { role: 'user', text }]);
     setLoading(true);
     setError(null);
@@ -28,7 +38,33 @@ function App() {
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: 'agent', text: data.reply }]);
+      const reply = data.reply;
+      
+      // Multimodal Parsing
+      let finalChatResponse = reply;
+      
+      // 1. Check for Canvas Text blocks: ```canvas ... ```
+      if (reply.includes('```canvas')) {
+          setIsCanvasOpen(true);
+          const canvasMatch = reply.match(/```canvas([\s\S]*?)```/);
+          if (canvasMatch) {
+              const canvasText = canvasMatch[1].trim();
+              setCanvasContent(prev => [...prev, { type: 'text', value: canvasText }]);
+              finalChatResponse = finalChatResponse.replace(canvasMatch[0], '(I have added the details to your workspace canvas on the right)');
+          }
+      }
+
+      // 2. Check for Autonomous Image prompts: ```image: [prompt] ```
+      if (reply.includes('```image:')) {
+          const imageMatch = reply.match(/```image:\s*([\s\S]*?)```/);
+          if (imageMatch) {
+              const imagePrompt = imageMatch[1].trim();
+              generateImage(imagePrompt, true); // true = append to existing canvas content
+              finalChatResponse = finalChatResponse.replace(imageMatch[0], `(Generating visualization for: "${imagePrompt}")`);
+          }
+      }
+
+      setMessages((prev) => [...prev, { role: 'agent', text: finalChatResponse }]);
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
     } finally {
@@ -36,85 +72,203 @@ function App() {
     }
   };
 
+  const generateImage = async (prompt, append = false) => {
+      setIsCanvasOpen(true);
+      setIsCanvasWriting(true);
+      if (!append) setCanvasContent([]); 
+      setError(null);
+
+      try {
+          const res = await fetch(`${API_URL}/generate-image`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt }),
+          });
+
+          if (!res.ok) throw new Error('Image generation failed.');
+
+          const data = await res.json();
+          setCanvasContent(prev => [...prev, { type: 'image', value: data.imageUrl }]);
+          
+          if (!append) {
+            setMessages(prev => [...prev, { role: 'agent', text: `I've generated an image for you: **"${prompt}"**` }]);
+          }
+      } catch (err) {
+          setError(err.message);
+      } finally {
+          setIsCanvasWriting(false);
+      }
+  };
+
+  // Theme persistence and applying to root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('learnify_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
+  // Load history on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('learnify_history');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setHistory(parsed);
+      } catch (e) {
+        console.error('Failed to parse history', e);
+      }
+    }
+  }, []);
+
+  // Save history on change
+  useEffect(() => {
+    localStorage.setItem('learnify_history', JSON.stringify(history));
+  }, [history]);
+
+  const saveCurrentToHistory = () => {
+    if (messages.length === 0) return;
+    
+    const title = messages[0]?.text?.substring(0, 30) || 'New Conversation';
+    const newSession = {
+      id: currentSessionId || Date.now().toString(),
+      title,
+      messages,
+      timestamp: Date.now(),
+    };
+
+    setHistory(prev => {
+      const filtered = prev.filter(s => s.id !== newSession.id);
+      return [newSession, ...filtered].slice(0, 20); // Keep last 20
+    });
+    
+    if (!currentSessionId) setCurrentSessionId(newSession.id);
+  };
+
   const resetChat = async () => {
+    if (messages.length > 0) {
+      saveCurrentToHistory();
+    }
+
     try {
       await fetch(`${API_URL}/reset`, { method: 'POST' });
     } catch {
       // silent fail – reset locally regardless
     }
     setMessages([]);
+    setCurrentSessionId(null);
     setError(null);
   };
 
+  const selectSession = (id) => {
+    const session = history.find(s => s.id === id);
+    if (session) {
+      setMessages(session.messages);
+      setCurrentSessionId(session.id);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans">
-
-      {/* ── Header ────────────────────────────────────── */}
-      <header className="flex items-center justify-between px-5 py-3 border-b border-gray-700 bg-gray-900/80 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="font-semibold text-sm leading-tight">AI Assistant</h1>
-            <p className="text-xs text-indigo-400">Gemini 2.0 Flash · Vertex AI</p>
-          </div>
-        </div>
-
-        {/* ── Navigation ──────────────────────────────── */}
-        <nav className="flex gap-2">
-          <Link
-            to="/"
-            className={`text-sm px-4 py-2 rounded-lg transition-colors ${location.pathname === '/'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-gray-400 hover:text-white border border-transparent hover:border-gray-700'
-              }`}
-          >
-            HTTP Chat
-          </Link>
-          <Link
-            to="/socket"
-            className={`text-sm px-4 py-2 rounded-lg transition-colors ${location.pathname === '/socket'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-gray-400 hover:text-white border border-transparent hover:border-gray-700'
-              }`}
-          >
-            WebSocket
-          </Link>
-        </nav>
-
-        <button
-          onClick={resetChat}
-          className="text-xs text-gray-400 hover:text-white border border-gray-600 hover:border-gray-400 px-3 py-1.5 rounded-lg transition-colors"
-        >
-          New Chat
-        </button>
-      </header>
-
-      {/* ── Error Banner ──────────────────────────────── */}
-      {error && (
-        <div className="mx-4 mt-3 px-4 py-2 bg-red-900/50 border border-red-700 rounded-xl text-sm text-red-300 flex items-center gap-2">
-          <span>⚠️</span>
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-white">✕</button>
-        </div>
-      )}
-
-      {/* ── Routes ─────────────────────────────────── */}
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <>
-              <ChatWindow messages={messages} loading={loading} />
-              <InputBar onSend={sendMessage} loading={loading} />
-            </>
-          }
+    <div className="flex flex-col h-screen bg-transparent text-slate-100 font-sans selection:bg-indigo-500/30 overflow-hidden">
+      {/* ── Main Content ─────────────────────────────── */}
+      <main className="flex-1 flex flex-row relative overflow-hidden bg-transparent">
+        {/* ── History Sidebar (Left) ──────────────────── */}
+        <HistorySidebar 
+            history={history} 
+            currentSessionId={currentSessionId}
+            onSelectSession={selectSession}
+            onNewChat={resetChat}
+            isOpen={isSidebarOpen}
+            onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+            theme={theme}
+            onToggleTheme={toggleTheme}
         />
-        <Route path="/socket" element={<WebsocketChat />} />
-      </Routes>
+
+        <div className="flex-1 flex flex-col relative overflow-hidden">
+            {error && (
+                <div className="px-6 py-3 bg-rose-500/10 border-b border-rose-500/20 text-[11px] font-medium text-rose-400 flex items-center gap-3 animate-fade-in z-30">
+                    <span>⚠️ SYSTEM ERROR:</span>
+                    <span className="flex-1">{error}</span>
+                    <button onClick={() => setError(null)} className="ml-auto hover:text-white transition-colors">DISMISS</button>
+                </div>
+            )}
+
+            <Routes>
+                <Route
+                    path="/"
+                    element={
+                    <div className="flex-1 flex flex-col relative overflow-hidden bg-[var(--bg-deep)]">
+                        {/* Top Header */}
+                        <div className="p-4 flex items-center justify-between border-b border-[var(--border)]/30">
+                           <div className="flex items-center gap-2">
+                               <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-[var(--surface-hover)] transition-all group">
+                                  <span className="text-[17px] font-bold text-[var(--text-main)]">Learnify</span>
+                                  <svg className="text-[var(--text-muted)] group-hover:text-[var(--text-main)] transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                               </button>
+                           </div>
+
+                           {!isCanvasOpen && canvasContent.length > 0 && (
+                               <button 
+                                onClick={() => setIsCanvasOpen(true)}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold transition-all animate-fade-in border border-indigo-500/20"
+                               >
+                                  <span className="text-emerald-400">✨</span>
+                                  OPEN WORKSPACE
+                               </button>
+                           )}
+                        </div>
+
+                        <div className="flex-1 flex flex-row overflow-hidden">
+                           <div className="flex-1 flex flex-col min-w-0">
+                                <div className="flex-1 overflow-y-auto px-4 CustomScrollbar">
+                          {messages.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in max-w-2xl mx-auto">
+                              <h2 className="text-3xl font-bold text-[var(--text-main)] mb-10 tracking-tight">How can I help you today?</h2>
+                              
+                              <div className="grid grid-cols-2 gap-3 w-full max-w-2xl">
+                                 {['Help me write', 'Code together', 'Summarize text', 'Analyze data'].map(label => (
+                                   <button key={label} onClick={() => sendMessage(label)} className="p-4 rounded-2xl border border-[var(--border)] hover:bg-[var(--surface-hover)] text-left transition-all group">
+                                      <span className="text-[13px] font-medium text-[var(--text-main)] block mb-1">{label}</span>
+                                      <span className="text-[11px] text-[var(--text-muted)] block">Start a conversation</span>
+                                   </button>
+                                 ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="max-w-3xl mx-auto">
+                              <ChatWindow messages={messages} />
+                              {loading && (
+                                <div className="flex items-center gap-2 p-4 animate-pulse text-[var(--text-muted)] text-[12px] italic">
+                                  AI is writing...
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                                <InputBar onSend={sendMessage} loading={loading} onGenerate={generateImage} />
+                                
+                                <div className="pb-4 pt-1 text-center">
+                                   <p className="text-[10px] text-[var(--text-muted)] opacity-60">learnify can make mistakes. Check important info.</p>
+                                </div>
+                           </div>
+
+                           <Canvas 
+                                content={canvasContent} 
+                                isOpen={isCanvasOpen} 
+                                onClose={() => setIsCanvasOpen(false)}
+                                isWriting={isCanvasWriting}
+                            />
+                        </div>
+                    </div>
+                    }
+                />
+                <Route path="/socket" element={<WebsocketChat />} />
+            </Routes>
+        </div>
+      </main>
     </div>
   );
 }
