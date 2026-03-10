@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import ChatWindow from './ChatWindow';
 import InputBar from './InputBar';
 
-const WS_URL = 'ws://34.61.247.103:3000';
+const WS_URL = import.meta.env.VITE_API_URL;
 
 // Base64 encode helper
 function arrayBufferToBase64(buffer) {
