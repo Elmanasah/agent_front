@@ -7,7 +7,7 @@ import HistorySidebar from './components/HistorySidebar';
 import Canvas from './components/Canvas';
 import { useEffect } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://34.61.247.103:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 function App() {
   const [messages, setMessages] = useState([]);
