@@ -3,6 +3,8 @@ import { GeminiLiveAPI } from "../services/GeminiLiveAPI";
 import { AudioInputManager, AudioOutputManager } from "../services/AudioManager";
 import { VideoManager, ScreenManager } from "../services/VideoManager";
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 const DEFAULT_SYSTEM = `You are a real-time vision assistant. You receive live video frames and audio, and respond with voice and text simultaneously. Prioritize visual information; if a frame is unclear, say so instead of guessing. Keep responses concise.`;
 
 const MODEL = "gemini-live-2.5-flash-native-audio";
@@ -138,7 +140,7 @@ export function useGemini() {
       try {
         // If we have attachments, we'll use the backend /chat endpoint 
         // because standard Vertex AI API handles files better than the Bidi protocol for one-off uploads
-        const response = await fetch('http://localhost:3000/chat', {
+        const response = await fetch(`${API_URL}/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text, attachments })

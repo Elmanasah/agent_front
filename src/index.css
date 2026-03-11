@@ -65,6 +65,22 @@ body {
   animation: fadeIn 0.4s ease-out forwards;
 }
 
+/* Slide left animation for Canvas */
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-left {
+  animation: slideLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.CustomScrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.CustomScrollbar::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+}
+
 ::selection {
   @apply bg-indigo-500/30 text-current;
 }

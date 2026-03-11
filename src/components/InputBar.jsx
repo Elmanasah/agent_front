@@ -88,7 +88,7 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
     };
 
     return (
-        <div className="px-6 py-8 bg-transparent relative">
+        <div className="px-3 md:px-6 py-4 md:py-8 bg-transparent relative">
             <div className="max-w-3xl mx-auto relative">
                 {/* Attachments Preview */}
                 {attachments.length > 0 && (

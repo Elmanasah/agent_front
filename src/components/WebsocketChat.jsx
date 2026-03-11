@@ -5,6 +5,8 @@ import Canvas from './Canvas';
 import { useGemini } from '../hooks/useGemini';
 import { useDevices } from '../hooks/useDevices';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 export default function WebsocketChat() {
     const [token, setToken] = useState('');
     const [isCanvasOpen, setIsCanvasOpen] = useState(false);
@@ -48,11 +50,11 @@ export default function WebsocketChat() {
     const handleConnect = async () => {
         try {
             // 1. Fetch GCP Config
-            const configResp = await fetch('http://localhost:3000/config');
+            const configResp = await fetch(`${API_URL}/config`);
             const { projectId, location } = await configResp.json();
 
             // 2. Fetch Access Token
-            const tokenResp = await fetch('http://localhost:3000/token');
+            const tokenResp = await fetch(`${API_URL}/token`);
             const { token: accessToken } = await tokenResp.json();
 
             if (!projectId || !accessToken) {
