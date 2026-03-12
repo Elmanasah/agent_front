@@ -2,7 +2,8 @@
  * GeminiLiveAPI
  */
 
-const PROXY_URL = import.meta.env.VITE_API_URL; // Pointing to our agent_server
+const PROXY_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// const PROXY_URL = import.meta.env.VITE_API_URL ; // Pointing to our agent_server
 
 export class GeminiLiveAPI {
   constructor({ projectId, location, model, apiHost }) {

@@ -4,6 +4,7 @@ import ChatWindow from './components/ChatWindow';
 import InputBar from './components/InputBar';
 import WebsocketChat from './components/WebsocketChat';
 import HistorySidebar from './components/HistorySidebar';
+import KnowledgeBase from './components/KnowledgeBase';
 import Canvas from './components/Canvas';
 import { useEffect } from 'react';
 
@@ -24,6 +25,7 @@ function App() {
   const [isCanvasWriting, setIsCanvasWriting] = useState(false);
   const [canvasWidth, setCanvasWidth] = useState(window.innerWidth * 0.55);
   const [isResizing, setIsResizing] = useState(false);
+  const [isKBOpen, setIsKBOpen] = useState(false);
 
   const startResizing = (e) => {
       e.preventDefault();
@@ -70,13 +72,21 @@ function App() {
       const res = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, attachments }),
+        body: JSON.stringify({ message: text, attachments, sessionId: currentSessionId }),
       });
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
       const data = await res.json();
       const reply = data.reply;
+
+      // Save sessionId from server and refresh sidebar on first message
+      if (data.sessionId && !currentSessionId) {
+        setCurrentSessionId(data.sessionId);
+        fetch(`${API_URL}/sessions`)
+          .then(r => r.json())
+          .then(d => setHistory(d.sessions || []));
+      }
       
       // --- Unified Parser for specialized blocks ---
       let finalChatResponse = reply;
@@ -159,64 +169,46 @@ function App() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  // Load history on mount
+  // Load sessions from server on mount
   useEffect(() => {
-    const saved = localStorage.getItem('learnify_history');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setHistory(parsed);
-      } catch (e) {
-        console.error('Failed to parse history', e);
-      }
-    }
+    fetch(`${API_URL}/sessions`)
+      .then(r => r.json())
+      .then(data => setHistory(data.sessions || []))
+      .catch(err => console.warn('[sessions] Could not load:', err.message));
   }, []);
 
-  // Save history on change
-  useEffect(() => {
-    localStorage.setItem('learnify_history', JSON.stringify(history));
-  }, [history]);
-
-  const saveCurrentToHistory = () => {
-    if (messages.length === 0) return;
-    
-    const title = messages[0]?.text?.substring(0, 30) || 'New Conversation';
-    const newSession = {
-      id: currentSessionId || Date.now().toString(),
-      title,
-      messages,
-      timestamp: Date.now(),
-    };
-
-    setHistory(prev => {
-      const filtered = prev.filter(s => s.id !== newSession.id);
-      return [newSession, ...filtered].slice(0, 20); // Keep last 20
-    });
-    
-    if (!currentSessionId) setCurrentSessionId(newSession.id);
-  };
-
   const resetChat = async () => {
-    if (messages.length > 0) {
-      saveCurrentToHistory();
-    }
-
     try {
-      await fetch(`${API_URL}/reset`, { method: 'POST' });
-    } catch {
-      // silent fail – reset locally regardless
-    }
+      await fetch(`${API_URL}/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentSessionId }),
+      });
+    } catch { /* silent */ }
     setMessages([]);
     setCanvasContent([]);
     setCurrentSessionId(null);
     setError(null);
   };
 
-  const selectSession = (id) => {
-    const session = history.find(s => s.id === id);
-    if (session) {
-      setMessages(session.messages);
-      setCurrentSessionId(session.id);
+  const selectSession = async (sessionId) => {
+    try {
+      const res  = await fetch(`${API_URL}/sessions/${sessionId}`);
+      const data = await res.json();
+      if (data.session) {
+        setCurrentSessionId(sessionId);
+        // Convert Vertex AI history format to display format
+        const display = [];
+        for (const msg of data.session.messages) {
+          const text = msg.parts?.map(p => p.text || '').join('') || '';
+          if (!text.trim()) continue;
+          display.push({ role: msg.role === 'model' ? 'agent' : 'user', text });
+        }
+        setMessages(display);
+        setCanvasContent([]);
+      }
+    } catch (err) {
+      console.error('[selectSession]', err.message);
     }
   };
 
@@ -248,6 +240,7 @@ function App() {
               onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
               theme={theme}
               onToggleTheme={toggleTheme}
+              onOpenKnowledgeBase={() => setIsKBOpen(true)}
               isCanvasOpen={isCanvasOpen}
               canvasTitle={canvasContent.find(c => c.type === 'text')?.value?.substring(0, 30) || 'Active Workspace'}
           />
@@ -360,6 +353,7 @@ function App() {
             </Routes>
         </div>
       </main>
+      <KnowledgeBase isOpen={isKBOpen} onClose={() => setIsKBOpen(false)} />
     </div>
   );
 }

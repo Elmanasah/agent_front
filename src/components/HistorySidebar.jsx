@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 
-export default function HistorySidebar({ history, currentSessionId, onSelectSession, onNewChat, isOpen, onToggle, theme, onToggleTheme }) {
+export default function HistorySidebar({ history, currentSessionId, onSelectSession, onNewChat, isOpen, onToggle, theme, onToggleTheme, onOpenKnowledgeBase }) {
     const location = useLocation();
     
     if (!isOpen) {
@@ -50,16 +50,20 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
                 <div className="space-y-0.5">
                     {history.map((session) => (
                         <button
-                            key={session.id}
-                            onClick={() => onSelectSession(session.id)}
+                            key={session.sessionId}
+                            onClick={() => onSelectSession(session.sessionId)}
                             className={`w-full text-left px-3 py-2 rounded-xl text-[13px] transition-all truncate group flex items-center justify-between ${
-                                currentSessionId === session.id 
+                                currentSessionId === session.sessionId 
                                 ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white font-medium shadow-sm' 
                                 : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                             }`}
                         >
-                            <span className="truncate">{session.title || 'Untitled'}</span>
-                            <svg className="opacity-0 group-hover:opacity-40 transition-opacity" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                            <div className="flex-1 min-w-0">
+                                <span className="truncate block">{session.title || 'Untitled'}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5">
+                                    {session.messageCount ?? 0} msgs · {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : ''}
+                                </span>
+                            </div>
                         </button>
                     ))}
                 </div>
@@ -67,6 +71,13 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
             
             {/* Bottom Section */}
             <div className="p-3 border-t border-slate-200 dark:border-white/10 space-y-1">
+                <button
+                    onClick={onOpenKnowledgeBase}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+                    <span className="text-[13px] font-medium">Knowledge Base</span>
+                </button>
                 <button 
                     onClick={onToggleTheme}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
