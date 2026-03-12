@@ -1,3 +1,5 @@
+import Typewriter from './Typewriter';
+
 const MessageBubble = ({ role, text, attachments = [] }) => {
     const isUser = role === 'user';
 
@@ -39,7 +41,7 @@ const MessageBubble = ({ role, text, attachments = [] }) => {
                     </div>
                 )}
                 <span className={isUser ? 'text-black dark:text-indigo-50' : ''}>
-                    {text}
+                    {isUser ? text : <Typewriter text={text} />}
                 </span>
             </div>
         </div>

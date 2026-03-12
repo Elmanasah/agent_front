@@ -282,7 +282,7 @@ function App() {
                                           </button>
                                         )}
                                         <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group">
-                                            <span className="text-[17px] font-bold text-slate-900 dark:text-white tracking-tight">Learnify</span>
+                                            <span className="text-[17px] font-bold text-slate-900 dark:text-white tracking-tight">Horus</span>
                                             <svg className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                         </button>
                                     </div>
@@ -326,7 +326,7 @@ function App() {
                                  <InputBar onSend={sendMessage} loading={loading} onGenerate={generateImage} />
                                  
                                  <div className="pb-4 pt-1 text-center">
-                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 opacity-60">learnify can make mistakes. Check important info.</p>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 opacity-60">Horus can make mistakes. Check important info.</p>
                                  </div>
                             </div>
  
