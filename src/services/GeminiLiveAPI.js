@@ -2,18 +2,18 @@
  * GeminiLiveAPI
  */
 
-const PROXY_URL = "ws://localhost:3000"; // Pointing to our agent_server
+const PROXY_URL = import.meta.env.VITE_API_URL; // Pointing to our agent_server
 
 export class GeminiLiveAPI {
   constructor({ projectId, location, model, apiHost }) {
     this.projectId = projectId;
     this.location = location;
-    this.model = model ?? "gemini-live-2.5-flash-native-audio"; 
+    this.model = model ?? "gemini-live-2.5-flash-native-audio";
     this.apiHost = apiHost ?? "us-central1-aiplatform.googleapis.com";
 
     // For Vertex AI LlmBidiService
     this.serviceUrl = `wss://${this.apiHost}/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
-    
+
     // For AI Studio (fallback/alternative)
     // this.serviceUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
@@ -33,9 +33,9 @@ export class GeminiLiveAPI {
 
     this.ws.onopen = () => {
       console.log("[GeminiLiveAPI] Socket open → sending auth");
-      this._send({ 
-        bearer_token: accessToken, 
-        service_url: customServiceUrl || this.serviceUrl 
+      this._send({
+        bearer_token: accessToken,
+        service_url: customServiceUrl || this.serviceUrl,
       });
     };
 
@@ -45,7 +45,9 @@ export class GeminiLiveAPI {
       console.log("[GeminiLiveAPI] Closed", evt.code, evt.reason);
       this.onDisconnected();
       if (evt.code !== 1000) {
-        this.onError(`Connection closed (${evt.code}): ${evt.reason || "unknown"}`);
+        this.onError(
+          `Connection closed (${evt.code}): ${evt.reason || "unknown"}`,
+        );
       }
     };
 
@@ -69,7 +71,7 @@ export class GeminiLiveAPI {
     // Vertex AI requires projects/{project}/locations/{location}/publishers/google/models/{model}
     const modelUri = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.model}`;
     console.log("[GeminiLiveAPI] Sending setup for model:", modelUri);
-    
+
     this._send({
       setup: {
         model: modelUri,
@@ -77,8 +79,8 @@ export class GeminiLiveAPI {
           response_modalities: ["AUDIO"],
         },
         output_audio_transcription: {},
-        system_instruction: { 
-          parts: [{ text: this.systemInstructions }] 
+        system_instruction: {
+          parts: [{ text: this.systemInstructions }],
         },
       },
     });
@@ -95,7 +97,9 @@ export class GeminiLiveAPI {
       }
 
       if (data.setupComplete) {
-        console.log("[GeminiLiveAPI] setupComplete → calling onConnectionStarted");
+        console.log(
+          "[GeminiLiveAPI] setupComplete → calling onConnectionStarted",
+        );
         this.onConnectionStarted();
         return;
       }
@@ -103,14 +107,16 @@ export class GeminiLiveAPI {
       // Handle standard model turns (AI Studio uses snake_case in responses too)
       const parts = data?.serverContent?.modelTurn?.parts ?? [];
       for (const part of parts) {
-        if (part.text) this.onReceiveResponse({ type: "TEXT", data: part.text });
-        if (part.inlineData?.data) this.onReceiveResponse({ type: "AUDIO", data: part.inlineData.data });
+        if (part.text)
+          this.onReceiveResponse({ type: "TEXT", data: part.text });
+        if (part.inlineData?.data)
+          this.onReceiveResponse({ type: "AUDIO", data: part.inlineData.data });
       }
 
       // Handle transcriptions
       const transcript = data?.serverContent?.outputTranscription?.text;
-      if (transcript) this.onReceiveResponse({ type: "TEXT", data: transcript });
-      
+      if (transcript)
+        this.onReceiveResponse({ type: "TEXT", data: transcript });
     } catch (err) {
       console.error("[GeminiLiveAPI] Parse error:", err);
     }
@@ -127,18 +133,18 @@ export class GeminiLiveAPI {
 
   sendAudio(base64PCM) {
     if (!this.ws || this.ws.bufferedAmount > 200_000) return;
-    this._send({ 
-        realtime_input: { 
-            media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: base64PCM }] 
-        } 
+    this._send({
+      realtime_input: {
+        media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: base64PCM }],
+      },
     });
   }
 
   sendImage(base64JPEG) {
-    this._send({ 
-        realtime_input: { 
-            media_chunks: [{ mime_type: "image/jpeg", data: base64JPEG }] 
-        } 
+    this._send({
+      realtime_input: {
+        media_chunks: [{ mime_type: "image/jpeg", data: base64JPEG }],
+      },
     });
   }
 }
