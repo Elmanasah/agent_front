@@ -3,7 +3,7 @@ import { GeminiLiveAPI } from "../services/GeminiLiveAPI";
 import { AudioInputManager, AudioOutputManager } from "../services/AudioManager";
 import { VideoManager, ScreenManager } from "../services/VideoManager";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 const DEFAULT_SYSTEM = `You are a real-time vision assistant. You receive live video frames and audio, and respond with voice and text simultaneously. Prioritize visual information; if a frame is unclear, say so instead of guessing. Keep responses concise.`;
 
@@ -118,7 +118,7 @@ export function useGemini() {
   const startCamera = useCallback((videoEl, canvasEl, deviceId) => {
     screenRef.current?.stop();
     if (!videoRef.current) {
-        videoRef.current = new VideoManager(videoEl, canvasEl);
+      videoRef.current = new VideoManager(videoEl, canvasEl);
     }
     videoRef.current.onFrame = (b64) => geminiRef.current?.sendImage(b64);
     videoRef.current.start(deviceId).catch(err => setError("Camera error: " + err.message));
@@ -144,7 +144,7 @@ export function useGemini() {
   const sendText = useCallback(
     async (text, attachments = []) => {
       if (!text.trim() && attachments.length === 0) return;
-      
+
       // Add user message to UI
       addMessage("user", text);
 
@@ -159,7 +159,7 @@ export function useGemini() {
 
         if (!response.ok) throw new Error('Failed to send message');
         const data = await response.json();
-        
+
         if (data.reply) {
           addMessage("assistant", data.reply);
         }
@@ -174,8 +174,8 @@ export function useGemini() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-        _stopAll();
-        audioOutRef.current.destroy();
+      _stopAll();
+      audioOutRef.current.destroy();
     };
   }, []);
 
