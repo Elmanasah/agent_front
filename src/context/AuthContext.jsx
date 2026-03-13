@@ -14,16 +14,13 @@ export function AuthProvider({ children }) {
 
     const checkAuth = async () => {
         try {
-            if (!localStorage.getItem('token')) {
-                setLoading(false);
-                return;
-            }
+            // With cookies, we just ping the backend.
+            // If the user has a valid HttpOnly cookie, this succeeds.
 
             const res = await api.get('/auth/me');
-            setUser(res.data.data.user);
+            setUser(res.data.data);
         } catch (err) {
             setUser(null);
-            localStorage.removeItem('token');
         } finally {
             setLoading(false);
         }
@@ -32,7 +29,6 @@ export function AuthProvider({ children }) {
     const login = async (email, password) => {
         try {
             const res = await api.post('/auth/login', { email, password });
-            localStorage.setItem('token', res.data.data.token);
             setUser(res.data.data.user);
             return res.data;
         } catch (err) {
@@ -61,7 +57,6 @@ export function AuthProvider({ children }) {
     const register = async (name, email, phone, password, verificationToken) => {
         try {
             const res = await api.post('/auth/register', { name, email, phone, password, verificationToken });
-            localStorage.setItem('token', res.data.data.token);
             setUser(res.data.data.user);
             return res.data;
         } catch (err) {
@@ -75,7 +70,6 @@ export function AuthProvider({ children }) {
         } catch (e) {
             console.error('Logout error', e);
         }
-        localStorage.removeItem('token');
         setUser(null);
     };
 
