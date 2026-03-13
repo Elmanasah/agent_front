@@ -4,8 +4,9 @@ import InputBar from './InputBar';
 import Canvas from './Canvas';
 import { useGemini } from '../hooks/useGemini';
 import { useDevices } from '../hooks/useDevices';
+import api from '../api/axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'ws://localhost:3000';
 
 export default function WebsocketChat() {
     const [token, setToken] = useState('');
@@ -14,7 +15,7 @@ export default function WebsocketChat() {
     const [isCanvasWriting, setIsCanvasWriting] = useState(false);
     const [showVision, setShowVision] = useState(false);
     const [selectedCamera, setSelectedCamera] = useState('');
-    
+
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
 
@@ -50,12 +51,12 @@ export default function WebsocketChat() {
     const handleConnect = async () => {
         try {
             // 1. Fetch GCP Config
-            const configResp = await fetch(`${API_URL}/config`);
-            const { projectId, location } = await configResp.json();
+            const configResp = await api.get('/token/config');
+            const { projectId, location } = configResp.data;
 
-            // 2. Fetch Access Token
-            const tokenResp = await fetch(`${API_URL}/token`);
-            const { token: accessToken } = await tokenResp.json();
+            // 2. Fetch Access Token (now securely via JWT)
+            const tokenResp = await api.get('/token');
+            const { token: accessToken } = tokenResp.data;
 
             if (!projectId || !accessToken) {
                 throw new Error('Missing GCP configuration or token');
@@ -98,16 +99,16 @@ export default function WebsocketChat() {
                         )}
 
                         {status === 'connected' && (
-                           <div className="flex gap-2">
-                              <select 
-                                onChange={(e) => setSelectedCamera(e.target.value)}
-                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs p-1 text-slate-800 dark:text-slate-200"
-                              >
-                                {cameras.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                              </select>
-                              <button onClick={() => { setShowVision(!showVision); startCamera(videoRef.current, canvasRef.current, selectedCamera); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">📷 Cam</button>
-                              <button onClick={() => { setShowVision(!showVision); startScreen(videoRef.current, canvasRef.current); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">🖥️ Screen</button>
-                           </div>
+                            <div className="flex gap-2">
+                                <select
+                                    onChange={(e) => setSelectedCamera(e.target.value)}
+                                    className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs p-1 text-slate-800 dark:text-slate-200"
+                                >
+                                    {cameras.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                <button onClick={() => { setShowVision(!showVision); startCamera(videoRef.current, canvasRef.current, selectedCamera); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">📷 Cam</button>
+                                <button onClick={() => { setShowVision(!showVision); startScreen(videoRef.current, canvasRef.current); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">🖥️ Screen</button>
+                            </div>
                         )}
                     </div>
 
@@ -149,9 +150,9 @@ export default function WebsocketChat() {
             </div>
 
             {/* ── Canvas Side Panel ───────────────────────── */}
-            <Canvas 
-                content={canvasContent} 
-                isOpen={isCanvasOpen} 
+            <Canvas
+                content={canvasContent}
+                isOpen={isCanvasOpen}
                 onClose={() => setIsCanvasOpen(false)}
                 isWriting={isCanvasWriting}
             />
