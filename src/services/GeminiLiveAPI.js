@@ -2,7 +2,8 @@
  * GeminiLiveAPI
  */
 
-const PROXY_URL = import.meta.env.VITE_API_URL; // Pointing to our agent_server
+const PROXY_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+// const PROXY_URL = import.meta.env.VITE_API_URL ; // Pointing to our agent_server
 
 export class GeminiLiveAPI {
   constructor({ projectId, location, model, apiHost }) {
@@ -21,10 +22,10 @@ export class GeminiLiveAPI {
     this.responseModalities = ["AUDIO"];
     this.systemInstructions = "";
 
-    this.onReceiveResponse = () => {};
-    this.onConnectionStarted = () => {};
+    this.onReceiveResponse = () => { };
+    this.onConnectionStarted = () => { };
     this.onError = (msg) => console.error("[GeminiLiveAPI]", msg);
-    this.onDisconnected = () => {};
+    this.onDisconnected = () => { };
   }
 
   connect(accessToken, customServiceUrl) {
