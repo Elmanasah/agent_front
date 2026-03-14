@@ -266,10 +266,10 @@ export default function Dashboard() {
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                                             </button>
                                         )}
-                                        <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group">
+                                        {/* <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group">
                                             <span className="text-[17px] font-bold text-amber-500 tracking-tight">Horus</span>
                                             <svg className="text-slate-400 dark:text-slate-500 group-hover:text-amber-400 transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-                                        </button>
+                                        </button> */}
                                     </div>
 
                                     {!isCanvasOpen && canvasContent.length > 0 && (

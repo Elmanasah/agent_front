@@ -9,6 +9,11 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
     const profileMenuRef = useRef(null);
     const [openSessionMenu, setOpenSessionMenu] = useState(null);
     const sessionMenuRef = useRef(null);
+    
+    // Search state
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const searchInputRef = useRef(null);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -23,6 +28,20 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Focus search input when opened
+    useEffect(() => {
+        if (isSearchOpen && searchInputRef.current) {
+            searchInputRef.current.focus();
+        } else if (!isSearchOpen) {
+            setSearchQuery('');
+        }
+    }, [isSearchOpen]);
+
+    const filteredHistory = history.filter(session => {
+        if (!searchQuery.trim()) return true;
+        return (session.title || 'Untitled').toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     if (!isOpen) {
         return (
@@ -42,7 +61,10 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                 </button>
                 <div className="flex gap-1">
-                    <button className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-all">
+                    <button 
+                        onClick={() => setIsSearchOpen(!isSearchOpen)}
+                        className={`p-2 rounded-xl transition-all ${isSearchOpen ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5'}`}
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </button>
                     <button onClick={onNewChat} className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-all">
@@ -51,25 +73,54 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
                 </div>
             </div>
 
-            {/* Main Navigation */}
+            {/* Main Navigation & Search */}
             <div className="flex-1 overflow-auto px-3 py-2 space-y-0.5 CustomScrollbar">
-                <Link to="/dashboard" className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${location.pathname === '/' ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/' ? 'text-indigo-600 dark:text-indigo-400' : ''}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    <span className="text-[13px] font-medium">Chat</span>
-                </Link>
+                
+                {/* Search Bar (Animated Dropdown Style) */}
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isSearchOpen ? 'max-h-20 mb-4 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="relative flex items-center bg-slate-100 dark:bg-white/5 rounded-xl px-3 py-2 border border-slate-200 dark:border-white/10 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 mr-2 shrink-0"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            placeholder="Search sessions..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-transparent border-none outline-none text-[13px] text-slate-700 dark:text-slate-200 w-full placeholder:text-slate-400"
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="ml-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        )}
+                    </div>
+                </div>
 
-                <Link to="/socket" className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${location.pathname === '/socket' ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/socket' ? 'text-indigo-600 dark:text-indigo-400' : ''}><path d="m19 8-4 4-4-4" /><path d="m5 16 4-4 4 4" /></svg>
-                    <span className="text-[13px] font-medium">Realtime</span>
-                </Link>
+                {!isSearchOpen && (
+                    <>
+                        <Link to="/dashboard" className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${location.pathname === '/' ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/' ? 'text-indigo-600 dark:text-indigo-400' : ''}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <span className="text-[13px] font-medium">Chat</span>
+                        </Link>
 
+                        <Link to="/socket" className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${location.pathname === '/socket' ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/socket' ? 'text-indigo-600 dark:text-indigo-400' : ''}><path d="m19 8-4 4-4-4" /><path d="m5 16 4-4 4 4" /></svg>
+                            <span className="text-[13px] font-medium">Realtime</span>
+                        </Link>
+                    </>
+                )}
 
-                <div className="pt-8 pb-2 px-3">
+                <div className={`pt-8 pb-2 px-3 transition-opacity ${isSearchOpen ? 'opacity-0 h-0 pt-0 pb-0 overflow-hidden' : 'opacity-100'}`}>
                     <div className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest opacity-60">History</div>
                 </div>
 
                 <div className="space-y-0.5" ref={sessionMenuRef}>
-                    {history.map((session) => (
+                    {filteredHistory.length === 0 && isSearchOpen && (
+                        <div className="px-3 py-8 text-center text-slate-400 dark:text-slate-500 text-[12px]">
+                            No sessions found matching "{searchQuery}"
+                        </div>
+                    )}
+                    {filteredHistory.map((session) => (
                         <div key={session.sessionId} className="relative group/session">
                             <button
                                 onClick={() => onSelectSession(session.sessionId)}
