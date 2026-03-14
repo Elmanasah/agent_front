@@ -24,7 +24,16 @@ export function useGemini() {
   const screenRef = useRef(null);
 
   const addMessage = useCallback((role, text) => {
-    setMessages((prev) => [...prev, { role, text, id: Date.now() + Math.random() }]);
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (role === 'assistant' && last?.role === 'assistant') {
+        // If last message doesn't end with sentence punctuation, append to it
+        if (!/[.!?]$/.test(last.text.trim())) {
+          return [...prev.slice(0, -1), { ...last, text: last.text + text }];
+        }
+      }
+      return [...prev, { role, text, id: Date.now() + Math.random() }];
+    });
   }, []);
 
   const connect = useCallback(
@@ -56,7 +65,9 @@ export function useGemini() {
           audioOutRef.current.playChunk(data).then(() => setStatus("connected"));
         }
         if (type === "TEXT") {
-          addMessage("assistant", data);
+          // Split incoming text chunk into sentences
+          const sentences = data.match(/[^.!?]+[.!?]\s*|[^.!?]+$/g) || [data];
+          sentences.forEach(s => addMessage("assistant", s));
         }
       };
 

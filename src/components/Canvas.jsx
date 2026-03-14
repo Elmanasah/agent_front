@@ -1,9 +1,30 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import MafsRenderer from './MafsRenderer';
 import MermaidRenderer from './MermaidRenderer';
 
 export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
     const scrollRef = useRef(null);
+    const [isCopied, setIsCopied] = useState(false);
+
+    const handleCopy = async () => {
+        if (!content || !Array.isArray(content)) return;
+        
+        try {
+            // Aggregate text blocks specifically
+            const textToCopy = content
+                .filter(b => b.type === 'text')
+                .map(b => b.value)
+                .join('\n\n');
+                
+            if (textToCopy) {
+                await navigator.clipboard.writeText(textToCopy);
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            }
+        } catch (err) {
+            console.error('Failed to copy', err);
+        }
+    };
 
     // Auto-scroll to bottom of workspace when new content is added
     useEffect(() => {
@@ -101,8 +122,16 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    <button className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300 transition-all" title="Copy Content">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <button 
+                        onClick={handleCopy}
+                        className={`p-2 rounded-lg transition-all ${isCopied ? 'bg-emerald-500/10 text-emerald-500' : 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300'}`} 
+                        title="Copy Content"
+                    >
+                        {isCopied ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        )}
                     </button>
                     <button className="px-5 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
                         SHARE

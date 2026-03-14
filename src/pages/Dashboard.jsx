@@ -5,7 +5,9 @@ import InputBar from '../components/InputBar';
 import HistorySidebar from '../components/HistorySidebar';
 import KnowledgeBase from '../components/KnowledgeBase';
 import Canvas from '../components/Canvas';
-import api from '../api/axios'; // Centralized Axios instance
+import ChatService from '../api/chat-services';
+import ImageService from '../api/image-services';
+import SessionService from '../api/session-services';
 
 export default function Dashboard() {
     const [messages, setMessages] = useState([]);
@@ -66,7 +68,7 @@ export default function Dashboard() {
         setError(null);
 
         try {
-            const { data } = await api.post('/chat', {
+            const data = await ChatService.chat({
                 message: text,
                 attachments,
                 sessionId: currentSessionId
@@ -77,7 +79,7 @@ export default function Dashboard() {
             // Save sessionId from server and refresh sidebar on first message
             if (data.sessionId && !currentSessionId) {
                 setCurrentSessionId(data.sessionId);
-                api.get('/sessions').then(({ data: d }) => setHistory(d.sessions || []));
+                SessionService.list().then((d) => setHistory(d.sessions || []));
             }
 
             // Unified Parser for specialized blocks
@@ -124,7 +126,7 @@ export default function Dashboard() {
         setError(null);
 
         try {
-            const { data } = await api.post('/image/generate', { prompt });
+            const data = await ImageService.generate({ prompt });
 
             setCanvasContent(prev => [...prev, { type: 'image', value: data.imageUrl }]);
 
@@ -156,14 +158,14 @@ export default function Dashboard() {
 
     // Load sessions from server on mount
     useEffect(() => {
-        api.get('/sessions')
-            .then(({ data }) => setHistory(data.sessions || []))
+        SessionService.list()
+            .then((data) => setHistory(data.sessions || []))
             .catch(err => console.warn('[sessions] Could not load:', err.message));
     }, []);
 
     const resetChat = async () => {
         try {
-            await api.post('/chat/reset', { sessionId: currentSessionId });
+            await ChatService.reset({ sessionId: currentSessionId });
         } catch { /* silent */ }
         setMessages([]);
         setCanvasContent([]);
@@ -171,9 +173,23 @@ export default function Dashboard() {
         setError(null);
     };
 
+    const deleteSession = async (sessionId) => {
+        try {
+            await SessionService.remove(sessionId);
+            setHistory(prev => prev.filter(s => s.sessionId !== sessionId));
+            if (currentSessionId === sessionId) {
+                setMessages([]);
+                setCanvasContent([]);
+                setCurrentSessionId(null);
+            }
+        } catch (err) {
+            console.error('[deleteSession]', err.message);
+        }
+    };
+
     const selectSession = async (sessionId) => {
         try {
-            const { data } = await api.get(`/sessions/${sessionId}`);
+            const data = await SessionService.get(sessionId);
             if (data.session) {
                 setCurrentSessionId(sessionId);
                 // Convert Vertex AI history format to display format
@@ -214,6 +230,7 @@ export default function Dashboard() {
                         history={history}
                         currentSessionId={currentSessionId}
                         onSelectSession={selectSession}
+                        onDeleteSession={deleteSession}
                         onNewChat={resetChat}
                         isOpen={isSidebarOpen}
                         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -249,10 +266,10 @@ export default function Dashboard() {
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                                             </button>
                                         )}
-                                        <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group">
+                                        {/* <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group">
                                             <span className="text-[17px] font-bold text-amber-500 tracking-tight">Horus</span>
                                             <svg className="text-slate-400 dark:text-slate-500 group-hover:text-amber-400 transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-                                        </button>
+                                        </button> */}
                                     </div>
 
                                     {!isCanvasOpen && canvasContent.length > 0 && (
@@ -276,7 +293,7 @@ export default function Dashboard() {
                                             </div>
                                             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">I am Horus. Seek my wisdom.</h2>
 
-                                            <div className="grid grid-cols-2 gap-3 w-full max-w-2xl px-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl px-6 sm:px-4">
                                                 {['Help me write', 'Code together', 'Summarize text', 'Analyze data'].map(label => (
                                                     <button key={label} onClick={() => sendMessage(label)} className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-left transition-all group shadow-sm">
                                                         <span className="text-[13px] font-medium text-slate-900 dark:text-white block mb-1">{label}</span>

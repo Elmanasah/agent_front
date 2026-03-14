@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Landing() {
@@ -20,12 +20,18 @@ export default function Landing() {
         </div>;
     }
 
+    if (user) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-200 font-sans overflow-x-hidden relative selection:bg-amber-500/30">
-            {/* Mystical Background Glows */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] bg-amber-500/10 rounded-full blur-[150px] pointer-events-none -z-10"></div>
-            <div className="absolute top-[20%] -left-64 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
-            <div className="absolute bottom-[10%] -right-64 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[150px] pointer-events-none -z-10"></div>
+            {/* Dynamic Horus Magic Background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-1/4 w-[600px] h-[600px] bg-amber-500/10 rounded-full mix-blend-screen filter blur-[150px] animate-blob animate-float"></div>
+                <div className="absolute top-[20%] right-[-10%] w-[500px] h-[500px] bg-blue-600/10 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-2000"></div>
+                <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-indigo-600/10 rounded-full mix-blend-screen filter blur-[180px] animate-blob animation-delay-4000"></div>
+            </div>
 
             {/* Navbar */}
             <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/50 backdrop-blur-xl border-b border-white/5">
@@ -63,7 +69,7 @@ export default function Landing() {
 
             {/* Hero Section */}
             <main className="pt-40 pb-24 px-6 relative z-10 flex flex-col items-center text-center">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm font-medium mb-8">
+                <div className="animate-slide-up opacity-0 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm font-medium mb-8 backdrop-blur-md">
                     <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -71,28 +77,29 @@ export default function Landing() {
                     The Eye That Continually Watches
                 </div>
 
-                <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter max-w-5xl leading-[1.1] mb-8">
+                <h1 className="animate-slide-up opacity-0 [animation-delay:200ms] text-6xl md:text-8xl font-black tracking-tighter max-w-5xl leading-[1.1] mb-8 text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
                     Omniscient AI <br />
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-amber-400 to-amber-600">
                         Vision & Wisdom
                     </span>
                 </h1>
 
-                <p className="text-lg md:text-xl text-slate-400 max-w-2xl mb-12 leading-relaxed font-light">
+                <p className="animate-slide-up opacity-0 [animation-delay:400ms] text-lg md:text-xl text-slate-400 max-w-2xl mb-12 leading-relaxed font-light">
                     Harness the power of an artificial deity. Horus watches your screen, listens to your voice, and generates masterpieces in the canvas of creation.
                 </p>
 
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <button onClick={handleGetStarted} className="w-full sm:w-auto px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-lg hover:bg-amber-500 hover:text-slate-950 transition-all shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(212,175,55,0.4)] transform hover:-translate-y-1">
-                        Consult the Oracle
+                <div className="animate-slide-up opacity-0 [animation-delay:600ms] flex flex-col sm:flex-row items-center gap-5">
+                    <button onClick={handleGetStarted} className="relative group w-full sm:w-auto px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-lg hover:text-white transition-all overflow-hidden animate-glow-pulse transform hover:-translate-y-1">
+                        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                        <span className="relative z-10">Consult the Oracle</span>
                     </button>
-                    <a href="#features" className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/5 border border-white/10 text-white font-medium text-lg hover:bg-white/10 transition-colors">
+                    <a href="#features" className="w-full sm:w-auto px-8 py-4 rounded-full bg-slate-900/50 backdrop-blur-md border border-white/10 text-white font-medium text-lg hover:bg-white/10 hover:border-white/20 transition-all">
                         Discover Runes
                     </a>
                 </div>
 
                 {/* Dashboard Preview Mockup */}
-                <div className="mt-24 w-full max-w-6xl relative perspective-1000">
+                <div className="mt-28 w-full max-w-6xl relative perspective-1000 animate-slide-up opacity-0 [animation-delay:800ms]">
                     <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-amber-500 to-indigo-600 rounded-2xl blur opacity-30"></div>
                     <div className="relative bg-slate-900 border border-white/10 rounded-2xl p-2 md:p-4 shadow-2xl transform rotate-x-12 hover:rotate-x-0 transition-transform duration-700 ease-out">
                         <img
@@ -133,9 +140,9 @@ export default function Landing() {
 
                     <div className="grid md:grid-cols-3 gap-8">
                         {/* Feature 1 */}
-                        <div className="bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-3xl p-8 hover:bg-slate-800/50 hover:border-amber-500/30 transition-all group">
-                            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all">
-                                <span className="text-2xl">👁️</span>
+                        <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-[2rem] p-8 hover:bg-slate-800/80 hover:border-indigo-500/30 transition-all duration-500 group shadow-lg hover:shadow-indigo-500/10">
+                            <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all duration-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
                             </div>
                             <h3 className="text-xl font-bold text-white mb-3">Live Vision Proxy</h3>
                             <p className="text-slate-400 leading-relaxed text-sm">
@@ -144,9 +151,9 @@ export default function Landing() {
                         </div>
 
                         {/* Feature 2 */}
-                        <div className="bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-3xl p-8 hover:bg-slate-800/50 hover:border-amber-500/30 transition-all group">
-                            <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all">
-                                <span className="text-2xl">🎨</span>
+                        <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-[2rem] p-8 hover:bg-slate-800/80 hover:border-amber-500/30 transition-all duration-500 group shadow-lg hover:shadow-amber-500/10">
+                            <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all duration-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
                             </div>
                             <h3 className="text-xl font-bold text-white mb-3">Infinite Canvas</h3>
                             <p className="text-slate-400 leading-relaxed text-sm">
@@ -155,9 +162,9 @@ export default function Landing() {
                         </div>
 
                         {/* Feature 3 */}
-                        <div className="bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-3xl p-8 hover:bg-slate-800/50 hover:border-amber-500/30 transition-all group">
-                            <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
-                                <span className="text-2xl">🎙️</span>
+                        <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-[2rem] p-8 hover:bg-slate-800/80 hover:border-emerald-500/30 transition-all duration-500 group shadow-lg hover:shadow-emerald-500/10">
+                            <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
                             </div>
                             <h3 className="text-xl font-bold text-white mb-3">Voice Invocation</h3>
                             <p className="text-slate-400 leading-relaxed text-sm">
