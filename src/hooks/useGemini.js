@@ -2,10 +2,10 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { GeminiLiveAPI } from "../services/GeminiLiveAPI";
 import { AudioInputManager, AudioOutputManager } from "../services/AudioManager";
 import { VideoManager, ScreenManager } from "../services/VideoManager";
+import ChatService from "../api/chat-services";
 
-const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
-
-const DEFAULT_SYSTEM = `You are a real-time vision assistant. You receive live video frames and audio, and respond with voice and text simultaneously. Prioritize visual information; if a frame is unclear, say so instead of guessing. Keep responses concise.`;
+// The server proxy handles GCP auth — we only need to pass our JWT
+const DEFAULT_SYSTEM = `You are Horus, a real-time vision and voice AI assistant. You can see, hear, search knowledge bases, generate images, and render diagrams. Keep responses concise and proactive.`;
 
 const MODEL = "gemini-live-2.5-flash-native-audio";
 
@@ -65,7 +65,6 @@ export function useGemini() {
           audioOutRef.current.playChunk(data).then(() => setStatus("connected"));
         }
         if (type === "TEXT") {
-          // Split incoming text chunk into sentences
           const sentences = data.match(/[^.!?]+[.!?]\s*|[^.!?]+$/g) || [data];
           sentences.forEach(s => addMessage("assistant", s));
         }
@@ -83,6 +82,7 @@ export function useGemini() {
       };
 
       geminiRef.current = api;
+      // Pass GCP bearer token — obtained securely via /api/v1/token (server SA creds)
       api.connect(accessToken, customServiceUrl);
     },
     [addMessage]
@@ -145,24 +145,25 @@ export function useGemini() {
     async (text, attachments = []) => {
       if (!text.trim() && attachments.length === 0) return;
 
-      // Add user message to UI
       addMessage("user", text);
 
+      // Use the live audio WebSocket if connected, otherwise fall through to SSE chat
+      if (geminiRef.current && text.trim()) {
+        geminiRef.current.sendText(text);
+        return;
+      }
+
+      // Fallback: SSE streaming chat
       try {
-        // If we have attachments, we'll use the backend /chat endpoint 
-        // because standard Vertex AI API handles files better than the Bidi protocol for one-off uploads
-        const response = await fetch(`${API_URL}/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, attachments })
+        const assistantMsgIndex_placeholder = null; // We don't have index here easily, just append
+        await ChatService.streamChat({
+          message: text,
+          attachments: attachments.map(a => ({ data: a.data, mimeType: a.mimeType })),
+          onEvent: (event) => {
+            if (event.type === 'token') addMessage('assistant', event.text);
+            if (event.type === 'error') setError(event.message);
+          },
         });
-
-        if (!response.ok) throw new Error('Failed to send message');
-        const data = await response.json();
-
-        if (data.reply) {
-          addMessage("assistant", data.reply);
-        }
       } catch (err) {
         console.error('[sendText Error]:', err);
         setError("Failed to send message: " + err.message);

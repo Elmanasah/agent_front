@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import ChatWindow from '../components/ChatWindow';
 import InputBar from '../components/InputBar';
@@ -6,7 +6,6 @@ import HistorySidebar from '../components/HistorySidebar';
 import KnowledgeBase from '../components/KnowledgeBase';
 import Canvas from '../components/Canvas';
 import ChatService from '../api/chat-services';
-import ImageService from '../api/image-services';
 import SessionService from '../api/session-services';
 
 export default function Dashboard() {
@@ -19,28 +18,29 @@ export default function Dashboard() {
     const [theme, setTheme] = useState(localStorage.getItem('learnify_theme') || 'dark');
     const location = useLocation();
 
+    // Canvas state
     const [isCanvasOpen, setIsCanvasOpen] = useState(false);
-    const [canvasContent, setCanvasContent] = useState([]); // Array of blocks
+    const [canvasContent, setCanvasContent] = useState([]); // Array of { type, value, title? }
     const [isCanvasWriting, setIsCanvasWriting] = useState(false);
     const [canvasWidth, setCanvasWidth] = useState(window.innerWidth * 0.55);
     const [isResizing, setIsResizing] = useState(false);
+
+    // Active tool indicator
+    const [activeTool, setActiveTool] = useState(null);
+
+    // Knowledge base
     const [isKBOpen, setIsKBOpen] = useState(false);
 
-    const startResizing = (e) => {
-        e.preventDefault();
-        setIsResizing(true);
-    };
+    // AbortController ref for in-flight SSE
+    const abortRef = useRef(null);
 
-    const stopResizing = () => {
-        setIsResizing(false);
-    };
-
+    // ── Canvas resizing ────────────────────────────────────────────────────────
+    const startResizing = (e) => { e.preventDefault(); setIsResizing(true); };
+    const stopResizing = () => setIsResizing(false);
     const resize = (e) => {
         if (isResizing) {
-            const newWidth = window.innerWidth - e.clientX;
-            if (newWidth > 350 && newWidth < window.innerWidth * 0.8) {
-                setCanvasWidth(newWidth);
-            }
+            const w = window.innerWidth - e.clientX;
+            if (w > 350 && w < window.innerWidth * 0.8) setCanvasWidth(w);
         }
     };
 
@@ -62,85 +62,109 @@ export default function Dashboard() {
         };
     }, [isResizing]);
 
-    const sendMessage = async (text, attachments = []) => {
-        setMessages((prev) => [...prev, { role: 'user', text, attachments }]);
-        setLoading(true);
-        setError(null);
+    // ── SSE event handler ──────────────────────────────────────────────────────
 
-        try {
-            const data = await ChatService.chat({
-                message: text,
-                attachments,
-                sessionId: currentSessionId
-            });
+    const handleSseEvent = (event, msgIndex) => {
+        switch (event.type) {
 
-            const reply = data.reply;
-
-            // Save sessionId from server and refresh sidebar on first message
-            if (data.sessionId && !currentSessionId) {
-                setCurrentSessionId(data.sessionId);
-                SessionService.list().then((d) => setHistory(d.sessions || []));
-            }
-
-            // Unified Parser for specialized blocks
-            let finalChatResponse = reply;
-            const blockRegex = /```(canvas|math|image:?|mermaid)([\s\S]*?)```/gi;
-            const matches = Array.from(reply.matchAll(blockRegex));
-
-            if (matches.length > 0) {
-                setIsCanvasOpen(true);
-
-                matches.forEach(match => {
-                    const [fullMatch, typeRaw, contentRaw] = match;
-                    const type = typeRaw.replace(':', '').trim().toLowerCase();
-                    const content = contentRaw.trim();
-
-                    if (type === 'canvas') {
-                        setCanvasContent(prev => [...prev, { type: 'text', value: content }]);
-                        finalChatResponse = finalChatResponse.split(fullMatch).join('(Details added to your workspace)');
-                    } else if (type === 'math') {
-                        setCanvasContent(prev => [...prev, { type: 'math', value: content }]);
-                        finalChatResponse = finalChatResponse.split(fullMatch).join('(Mathematical visualization generated)');
-                    } else if (type === 'mermaid') {
-                        setCanvasContent(prev => [...prev, { type: 'mermaid', value: content }]);
-                        finalChatResponse = finalChatResponse.split(fullMatch).join('(Architecture diagram generated)');
-                    } else if (type === 'image') {
-                        generateImage(content, true);
-                        finalChatResponse = finalChatResponse.split(fullMatch).join(`(Generating visualization: "${content}")`);
+            case 'token':
+                // Append text token to the current agent message
+                setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[msgIndex];
+                    if (last && last.role === 'agent') {
+                        updated[msgIndex] = { ...last, text: last.text + event.text };
                     }
+                    return updated;
                 });
+                break;
+
+            case 'tool_start':
+                setActiveTool({ name: event.tool, args: event.args });
+                break;
+
+            case 'tool_result': {
+                setActiveTool(null);
+                const result = event.result || {};
+
+                if (result.image) {
+                    setIsCanvasOpen(true);
+                    setCanvasContent(prev => [...prev, { type: 'image', value: result.image.url, title: result.image.prompt }]);
+                }
+                if (result.canvas) {
+                    setIsCanvasOpen(true);
+                    setCanvasContent(prev => [...prev, { type: 'text', value: result.canvas.markdown, title: result.canvas.title }]);
+                }
+                if (result.diagram) {
+                    setIsCanvasOpen(true);
+                    setCanvasContent(prev => [...prev, { type: 'mermaid', value: result.diagram.syntax, title: result.diagram.title }]);
+                }
+                if (result.math) {
+                    setIsCanvasOpen(true);
+                    setCanvasContent(prev => [...prev, { type: 'math', value: result.math.json, title: result.math.title }]);
+                }
+                break;
             }
 
-            setMessages((prev) => [...prev, { role: 'agent', text: finalChatResponse }]);
-        } catch (err) {
-            setError(err.response?.data?.message || err.message || 'Something went wrong. Please try again.');
-        } finally {
-            setLoading(false);
+            case 'error':
+                setError(event.message || 'An error occurred');
+                break;
+
+            case 'done':
+                // Save session ID from the first message
+                if (event.sessionId && !currentSessionId) {
+                    setCurrentSessionId(event.sessionId);
+                    SessionService.list().then(d => setHistory(d.sessions || []));
+                }
+                break;
+
+            default:
+                break;
         }
     };
 
-    const generateImage = async (prompt, append = false) => {
-        setIsCanvasOpen(true);
-        setIsCanvasWriting(true);
-        if (!append) setCanvasContent([]);
+    // ── Send message ───────────────────────────────────────────────────────────
+
+    const sendMessage = async (text, attachments = []) => {
+        if (loading) return;
+
+        // Cancel any running stream
+        if (abortRef.current) abortRef.current.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+
+        // Push user message and an empty agent placeholder
+        const agentMsgIndex = messages.length + 1;
+        setMessages(prev => [
+            ...prev,
+            { role: 'user', text, attachments },
+            { role: 'agent', text: '' },
+        ]);
+        setLoading(true);
         setError(null);
+        setActiveTool(null);
 
         try {
-            const data = await ImageService.generate({ prompt });
-
-            setCanvasContent(prev => [...prev, { type: 'image', value: data.imageUrl }]);
-
-            if (!append) {
-                setMessages(prev => [...prev, { role: 'agent', text: `I've generated an image for you: **"${prompt}"**` }]);
-            }
+            await ChatService.streamChat({
+                message: text,
+                attachments: attachments.map(a => ({ data: a.data, mimeType: a.mimeType })),
+                sessionId: currentSessionId,
+                signal: controller.signal,
+                onEvent: (event) => handleSseEvent(event, agentMsgIndex),
+            });
         } catch (err) {
-            setError(err.response?.data?.message || err.message);
+            if (err.name !== 'AbortError') {
+                setError(err.message || 'Something went wrong. Please try again.');
+            }
         } finally {
+            setLoading(false);
+            setActiveTool(null);
             setIsCanvasWriting(false);
         }
     };
 
-    // Theme persistence and applying to root for Tailwind dark mode
+    // ── Theme ──────────────────────────────────────────────────────────────────
+
     useEffect(() => {
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
@@ -152,25 +176,24 @@ export default function Dashboard() {
         localStorage.setItem('learnify_theme', theme);
     }, [theme]);
 
-    const toggleTheme = () => {
-        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-    };
+    const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
-    // Load sessions from server on mount
+    // ── Sessions ───────────────────────────────────────────────────────────────
+
     useEffect(() => {
         SessionService.list()
-            .then((data) => setHistory(data.sessions || []))
+            .then(data => setHistory(data.sessions || []))
             .catch(err => console.warn('[sessions] Could not load:', err.message));
     }, []);
 
     const resetChat = async () => {
-        try {
-            await ChatService.reset({ sessionId: currentSessionId });
-        } catch { /* silent */ }
+        if (abortRef.current) abortRef.current.abort();
+        try { await ChatService.reset({ sessionId: currentSessionId }); } catch { /* silent */ }
         setMessages([]);
         setCanvasContent([]);
         setCurrentSessionId(null);
         setError(null);
+        setActiveTool(null);
     };
 
     const deleteSession = async (sessionId) => {
@@ -192,7 +215,6 @@ export default function Dashboard() {
             const data = await SessionService.get(sessionId);
             if (data.session) {
                 setCurrentSessionId(sessionId);
-                // Convert Vertex AI history format to display format
                 const display = [];
                 for (const msg of data.session.messages) {
                     const text = msg.parts?.map(p => p.text || '').join('') || '';
@@ -209,7 +231,6 @@ export default function Dashboard() {
 
     return (
         <div className="flex flex-col h-screen bg-transparent text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 selection:text-current overflow-hidden">
-            {/* ── Main Content ─────────────────────────────── */}
             <main className="flex-1 flex flex-row relative overflow-hidden bg-transparent">
                 {/* Mobile Sidebar Backdrop */}
                 {isSidebarOpen && (
@@ -219,13 +240,13 @@ export default function Dashboard() {
                     />
                 )}
 
-                {/* ── History Sidebar (Left) ──────────────────── */}
+                {/* ── History Sidebar ──────────────────────────────────────── */}
                 <div className={`
-          flex h-full shrink-0 z-50 transition-all duration-300 ease-in-out border-r border-slate-200 dark:border-white/5
-          ${isSidebarOpen ? 'w-[260px]' : 'w-[0px] md:w-16'}
-          max-md:fixed max-md:top-0 max-md:left-0
-          ${!isSidebarOpen && 'max-md:-translate-x-full'}
-        `}>
+                  flex h-full shrink-0 z-50 transition-all duration-300 ease-in-out border-r border-slate-200 dark:border-white/5
+                  ${isSidebarOpen ? 'w-[260px]' : 'w-[0px] md:w-16'}
+                  max-md:fixed max-md:top-0 max-md:left-0
+                  ${!isSidebarOpen && 'max-md:-translate-x-full'}
+                `}>
                     <HistorySidebar
                         history={history}
                         currentSessionId={currentSessionId}
@@ -238,14 +259,16 @@ export default function Dashboard() {
                         onToggleTheme={toggleTheme}
                         onOpenKnowledgeBase={() => setIsKBOpen(true)}
                         isCanvasOpen={isCanvasOpen}
-                        canvasTitle={canvasContent.find(c => c.type === 'text')?.value?.substring(0, 30) || 'Active Workspace'}
+                        canvasTitle={canvasContent.find(c => c.type === 'text')?.title || canvasContent.find(c => c.type === 'text')?.value?.substring(0, 30) || 'Active Workspace'}
                     />
                 </div>
 
                 <div className="flex-1 flex flex-col relative overflow-hidden">
+
+                    {/* ── Error Banner ─────────────────────────────────────── */}
                     {error && (
                         <div className="px-6 py-3 bg-rose-500/10 border-b border-rose-500/20 text-[11px] font-medium text-rose-400 flex items-center gap-3 animate-fade-in z-30">
-                            <span>⚠️ SYSTEM ERROR:</span>
+                            <span>⚠️ ERROR:</span>
                             <span className="flex-1">{error}</span>
                             <button onClick={() => setError(null)} className="ml-auto hover:text-white transition-colors">DISMISS</button>
                         </div>
@@ -253,9 +276,11 @@ export default function Dashboard() {
 
                     <div className="flex-1 flex flex-col relative overflow-hidden bg-white dark:bg-slate-950">
                         <div className="flex-1 flex flex-row overflow-hidden">
-                            {/* ── Chat Side ────────────────────────────── */}
+
+                            {/* ── Chat Side ────────────────────────────────── */}
                             <div className={`flex-1 flex flex-col min-w-0 h-full bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/10 relative ${isCanvasOpen ? 'max-md:hidden' : 'flex'}`}>
-                                {/* Top Header - Now localized to Chat */}
+
+                                {/* Top Header */}
                                 <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-white/10 shrink-0">
                                     <div className="flex items-center gap-2">
                                         {!isSidebarOpen && (
@@ -263,14 +288,18 @@ export default function Dashboard() {
                                                 onClick={() => setIsSidebarOpen(true)}
                                                 className="md:hidden p-2 -ml-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
                                             </button>
                                         )}
-                                        {/* <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group">
-                                            <span className="text-[17px] font-bold text-amber-500 tracking-tight">Horus</span>
-                                            <svg className="text-slate-400 dark:text-slate-500 group-hover:text-amber-400 transition-colors" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-                                        </button> */}
                                     </div>
+
+                                    {/* Active tool indicator */}
+                                    {activeTool && (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs font-medium text-amber-500 animate-pulse">
+                                            <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                                            Running: {activeTool.name.replace(/_/g, ' ')}
+                                        </div>
+                                    )}
 
                                     {!isCanvasOpen && canvasContent.length > 0 && (
                                         <button
@@ -282,6 +311,8 @@ export default function Dashboard() {
                                         </button>
                                     )}
                                 </div>
+
+                                {/* Messages */}
                                 <div className="flex-1 overflow-y-auto px-4 CustomScrollbar">
                                     {messages.length === 0 ? (
                                         <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in max-w-2xl mx-auto">
@@ -305,22 +336,23 @@ export default function Dashboard() {
                                     ) : (
                                         <div className="max-w-3xl mx-auto">
                                             <ChatWindow messages={messages} />
-                                            {loading && (
+                                            {loading && !activeTool && (
                                                 <div className="flex items-center gap-2 p-4 animate-pulse text-slate-400 dark:text-slate-500 text-[12px] italic">
-                                                    AI is writing...
+                                                    Horus is thinking...
                                                 </div>
                                             )}
                                         </div>
                                     )}
                                 </div>
 
-                                <InputBar onSend={sendMessage} loading={loading} onGenerate={generateImage} />
+                                <InputBar onSend={sendMessage} loading={loading} />
 
                                 <div className="pb-4 pt-1 text-center">
                                     <p className="text-[10px] text-slate-400 dark:text-slate-500 opacity-60">Horus may hallucinate ancient wisdom. Verify with facts.</p>
                                 </div>
                             </div>
 
+                            {/* ── Canvas Panel ──────────────────────────────── */}
                             {isCanvasOpen && (
                                 <div
                                     className={`flex h-full relative ${isCanvasOpen ? 'max-md:fixed max-md:inset-0 max-md:z-[100]' : ''}`}
@@ -330,7 +362,7 @@ export default function Dashboard() {
                                         onMouseDown={startResizing}
                                         className={`hidden md:flex w-1.5 h-full cursor-col-resize hover:bg-amber-500/20 active:bg-amber-500/40 transition-colors z-[50] relative group items-center justify-center ${isResizing ? 'bg-amber-500/30' : ''}`}
                                     >
-                                        <div className="w-[1px] h-12 bg-amber-500/30 group-hover:bg-amber-500/50 transition-colors"></div>
+                                        <div className="w-[1px] h-12 bg-amber-500/30 group-hover:bg-amber-500/50 transition-colors" />
                                     </div>
                                     <div className="flex-1 h-full overflow-hidden">
                                         <Canvas
