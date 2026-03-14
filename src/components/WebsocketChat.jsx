@@ -90,24 +90,25 @@ export default function WebsocketChat() {
 
     const handleConnect = async () => {
         try {
-            // 1. Fetch GCP Config
+            // 1. Fetch GCP Config (projectId, location for model path)
             const configResp = await TokenService.getConfig();
             const { projectId, location } = configResp;
 
-            // 2. Fetch Access Token (now securely via JWT)
+            // 2. Get a short-lived GCP access token via the server's service account
+            //    This is the secure path — browser never touches GCP credentials directly
             const tokenResp = await TokenService.getToken();
             const { token: accessToken } = tokenResp;
 
             if (!projectId || !accessToken) {
-                throw new Error('Missing GCP configuration or token');
+                throw new Error('Missing GCP configuration or access token');
             }
 
-            // 3. Connect
+            // 3. Connect — proxy uses bearer_token to authenticate to GCP Vertex AI
             connect({
                 accessToken,
                 projectId,
                 location,
-                systemInstructions: 'You are a helpful AI assistant with vision. You use the Canvas for complex work.',
+                systemInstructions: 'You are Horus, a helpful AI assistant with vision. Use the Canvas for complex work.',
             });
         } catch (err) {
             console.error('Failed to connect to Vertex AI:', err);
@@ -165,79 +166,79 @@ export default function WebsocketChat() {
                                     )}
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm text-slate-500 dark:text-slate-400">Status:</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${status === 'connected' || status === 'speaking' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' :
-                                status === 'connecting' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' :
-                                    error ? 'bg-rose-500/20 text-rose-500 border border-rose-500/20' :
-                                        'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10'
-                                }`}>
-                                {status.toUpperCase()}
-                            </span>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${status === 'connected' || status === 'speaking' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' :
+                                            status === 'connecting' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' :
+                                                error ? 'bg-rose-500/20 text-rose-500 border border-rose-500/20' :
+                                                    'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10'
+                                            }`}>
+                                            {status.toUpperCase()}
+                                        </span>
+                                    </div>
+
+                                    {status === 'disconnected' && (
+                                        <div className="text-sm text-slate-400 dark:text-slate-500 italic">
+                                            Ready to connect to Google Cloud Vertex AI
+                                        </div>
+                                    )}
+
+                                    {status === 'connected' && (
+                                        <div className="flex gap-2">
+                                            <select
+                                                onChange={(e) => setSelectedCamera(e.target.value)}
+                                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs p-1 text-slate-800 dark:text-slate-200"
+                                            >
+                                                {cameras.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                            <button onClick={() => { setShowVision(!showVision); startCamera(videoRef.current, canvasRef.current, selectedCamera); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">📷 Cam</button>
+                                            <button onClick={() => { setShowVision(!showVision); startScreen(videoRef.current, canvasRef.current); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">🖥️ Screen</button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="ml-4 flex gap-2">
+                                    {status !== 'disconnected' && (
+                                        <button
+                                            onClick={toggleMic}
+                                            className={`text-xs px-4 py-1.5 border rounded-full transition-all flex items-center gap-2 ${micMuted ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400' : 'bg-indigo-600 text-white border-transparent shadow-lg shadow-indigo-500/20'}`}
+                                        >
+                                            {micMuted ? '🎙️ Muted' : '🎙️ Live'}
+                                        </button>
+                                    )}
+
+                                    <button
+                                        onClick={status === 'disconnected' ? handleConnect : disconnect}
+                                        className={`text-xs px-4 py-1.5 rounded-full font-medium transition-all ${status === 'disconnected' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg shadow-black/10' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}
+                                    >
+                                        {status === 'disconnected' ? 'Connect' : 'Disconnect'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ── Vision Area ─────────────────────────────── */}
+                            <div className={`${showVision ? 'h-48' : 'h-0'} transition-all overflow-hidden bg-black relative`}>
+                                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain" />
+                                <canvas ref={canvasRef} className="hidden" />
+                                <button onClick={() => { setShowVision(false); stopCamera(); stopScreen(); }} className="absolute top-2 right-2 text-white bg-black/50 rounded-full p-1 hover:bg-black/70 transition-colors">✕</button>
+                            </div>
+
+                            {/* ── Chat Area ─────────────────────────────────── */}
+                            <div className="flex-1 overflow-hidden flex flex-col relative">
+                                <ChatWindow messages={messages} loading={status === 'connecting'} />
+                            </div>
+
+                            {/* ── Input Bar ─────────────────────────────────── */}
+                            <div className="p-4 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
+                                <InputBar onSend={sendText} loading={status === 'connecting'} />
+                            </div>
                         </div>
 
-                        {status === 'disconnected' && (
-                            <div className="text-sm text-slate-400 dark:text-slate-500 italic">
-                                Ready to connect to Google Cloud Vertex AI
-                            </div>
-                        )}
-
-                        {status === 'connected' && (
-                            <div className="flex gap-2">
-                                <select
-                                    onChange={(e) => setSelectedCamera(e.target.value)}
-                                    className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs p-1 text-slate-800 dark:text-slate-200"
-                                >
-                                    {cameras.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                                <button onClick={() => { setShowVision(!showVision); startCamera(videoRef.current, canvasRef.current, selectedCamera); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">📷 Cam</button>
-                                <button onClick={() => { setShowVision(!showVision); startScreen(videoRef.current, canvasRef.current); }} className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">🖥️ Screen</button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="ml-4 flex gap-2">
-                        {status !== 'disconnected' && (
-                            <button
-                                onClick={toggleMic}
-                                className={`text-xs px-4 py-1.5 border rounded-full transition-all flex items-center gap-2 ${micMuted ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400' : 'bg-indigo-600 text-white border-transparent shadow-lg shadow-indigo-500/20'}`}
-                            >
-                                {micMuted ? '🎙️ Muted' : '🎙️ Live'}
-                            </button>
-                        )}
-
-                        <button
-                            onClick={status === 'disconnected' ? handleConnect : disconnect}
-                            className={`text-xs px-4 py-1.5 rounded-full font-medium transition-all ${status === 'disconnected' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg shadow-black/10' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}
-                        >
-                            {status === 'disconnected' ? 'Connect' : 'Disconnect'}
-                        </button>
-                    </div>
-                </div>
-
-                {/* ── Vision Area ─────────────────────────────── */}
-                <div className={`${showVision ? 'h-48' : 'h-0'} transition-all overflow-hidden bg-black relative`}>
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain" />
-                    <canvas ref={canvasRef} className="hidden" />
-                    <button onClick={() => { setShowVision(false); stopCamera(); stopScreen(); }} className="absolute top-2 right-2 text-white bg-black/50 rounded-full p-1 hover:bg-black/70 transition-colors">✕</button>
-                </div>
-
-                {/* ── Chat Area ─────────────────────────────────── */}
-                <div className="flex-1 overflow-hidden flex flex-col relative">
-                    <ChatWindow messages={messages} loading={status === 'connecting'} />
-                </div>
-
-                {/* ── Input Bar ─────────────────────────────────── */}
-                <div className="p-4 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
-                    <InputBar onSend={sendText} loading={status === 'connecting'} />
-                </div>
-            </div>
-
-            {/* ── Canvas Side Panel ───────────────────────── */}
-            <Canvas
-                content={canvasContent}
-                isOpen={isCanvasOpen}
-                onClose={() => setIsCanvasOpen(false)}
-                isWriting={isCanvasWriting}
-            />
+                        {/* ── Canvas Side Panel ───────────────────────── */}
+                        <Canvas
+                            content={canvasContent}
+                            isOpen={isCanvasOpen}
+                            onClose={() => setIsCanvasOpen(false)}
+                            isWriting={isCanvasWriting}
+                        />
                     </div>
                 </div>
             </main>
