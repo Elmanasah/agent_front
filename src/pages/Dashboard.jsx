@@ -276,7 +276,7 @@ export default function Dashboard() {
                                             </div>
                                             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-10 tracking-tight">I am Horus. Seek my wisdom.</h2>
 
-                                            <div className="grid grid-cols-2 gap-3 w-full max-w-2xl px-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl px-6 sm:px-4">
                                                 {['Help me write', 'Code together', 'Summarize text', 'Analyze data'].map(label => (
                                                     <button key={label} onClick={() => sendMessage(label)} className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-left transition-all group shadow-sm">
                                                         <span className="text-[13px] font-medium text-slate-900 dark:text-white block mb-1">{label}</span>

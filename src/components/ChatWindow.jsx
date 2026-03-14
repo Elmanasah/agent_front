@@ -11,14 +11,14 @@ const ChatWindow = ({ messages, loading }) => {
     }, [messages, loading]);
 
     return (
-        <div className="flex-1 overflow-y-auto px-6 py-8 space-y-2 relative scroll-smooth CustomScrollbar">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 sm:py-8 space-y-2 relative scroll-smooth CustomScrollbar">
 
             {messages.map((msg, i) => (
                 <MessageBubble key={msg.id || i} role={msg.role} text={msg.text} attachments={msg.attachments} />
             ))}
 
             {loading && (
-                <div className="animate-fade-in ml-4 mb-4">
+                <div className="animate-fade-in mx-4 mb-4">
                     <TypingIndicator />
                 </div>
             )}
