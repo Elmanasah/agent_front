@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import DocumentService from '../api/document-services';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const IconDB       = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>;
@@ -48,9 +47,8 @@ export default function KnowledgeBase({ isOpen, onClose }) {
     const loadDocuments = async () => {
         setLoading(true);
         try {
-            const res  = await fetch(`${API_URL}/documents`);
-            const data = await res.json();
-            setDocuments(data.documents || []);
+            const data = await DocumentService.list();
+            setDocuments(data.documents || data || []);
         } catch (err) {
             setError('Could not load documents');
         } finally {
@@ -86,19 +84,11 @@ export default function KnowledgeBase({ isOpen, onClose }) {
             try {
                 const base64 = await fileToBase64(file);
 
-                const res = await fetch(`${API_URL}/ingest`, {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({
-                        fileName: file.name,
-                        mimeType: file.type || 'application/octet-stream',
-                        data:     base64,
-                    }),
+                const data = await DocumentService.ingest({
+                    fileName: file.name,
+                    mimeType: file.type || 'application/octet-stream',
+                    data:     base64,
                 });
-
-                const data = await res.json();
-
-                if (!res.ok) throw new Error(data.error || 'Ingestion failed');
 
                 // Mark as done
                 setUploadQueue(prev => prev.map(q =>
@@ -129,7 +119,7 @@ export default function KnowledgeBase({ isOpen, onClose }) {
     const handleDelete = async (docId, fileName) => {
         if (!confirm(`Remove "${fileName}" from the knowledge base?`)) return;
         try {
-            await fetch(`${API_URL}/documents/${docId}`, { method: 'DELETE' });
+            await DocumentService.remove(docId);
             setDocuments(prev => prev.filter(d => d.docId !== docId));
         } catch {
             setError('Failed to delete document');

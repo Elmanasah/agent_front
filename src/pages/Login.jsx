@@ -20,7 +20,7 @@ export default function Login() {
         setError(null);
         setLoading(true);
         try {
-            await login(email, password);
+            await login({ email, password });
             navigate('/');
         } catch (err) {
             setError(err.message);

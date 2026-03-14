@@ -13,7 +13,7 @@ export default function Register() {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    const { sendOtp, verifyOtp, register } = useAuth();
+    const { sendVerificationOtp, verifyEmail, register } = useAuth();
     const navigate = useNavigate();
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -26,7 +26,7 @@ export default function Register() {
         setError(null);
         setLoading(true);
         try {
-            await sendOtp(email, phone);
+            await sendVerificationOtp(email, phone);
             setStep(2);
         } catch (err) {
             setError(err.message);
@@ -40,8 +40,8 @@ export default function Register() {
         setError(null);
         setLoading(true);
         try {
-            const token = await verifyOtp(email, otp);
-            setVerificationToken(token);
+            const data = await verifyEmail(email, otp);
+            setVerificationToken(data?.verificationToken || data?.data?.verificationToken);
             setStep(3);
         } catch (err) {
             setError(err.message);
@@ -55,7 +55,7 @@ export default function Register() {
         setError(null);
         setLoading(true);
         try {
-            await register(name, email, phone, password, verificationToken);
+            await register({ name, email, phone, password, verificationToken });
             navigate('/');
         } catch (err) {
             setError(err.message);

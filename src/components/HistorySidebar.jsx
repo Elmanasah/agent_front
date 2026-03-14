@@ -1,9 +1,28 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export default function HistorySidebar({ history, currentSessionId, onSelectSession, onNewChat, isOpen, onToggle, theme, onToggleTheme, onOpenKnowledgeBase }) {
+export default function HistorySidebar({ history, currentSessionId, onSelectSession, onDeleteSession, onNewChat, isOpen, onToggle, theme, onToggleTheme, onOpenKnowledgeBase }) {
     const location = useLocation();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+    const profileMenuRef = useRef(null);
+    const [openSessionMenu, setOpenSessionMenu] = useState(null);
+    const sessionMenuRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+                setIsProfileMenuOpen(false);
+            }
+            if (sessionMenuRef.current && !sessionMenuRef.current.contains(event.target)) {
+                setOpenSessionMenu(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     if (!isOpen) {
         return (
@@ -49,23 +68,67 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
                     <div className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest opacity-60">History</div>
                 </div>
 
-                <div className="space-y-0.5">
+                <div className="space-y-0.5" ref={sessionMenuRef}>
                     {history.map((session) => (
-                        <button
-                            key={session.sessionId}
-                            onClick={() => onSelectSession(session.sessionId)}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-[13px] transition-all truncate group flex items-center justify-between ${currentSessionId === session.sessionId
-                                ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white font-medium shadow-sm'
-                                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                        <div key={session.sessionId} className="relative group/session">
+                            <button
+                                onClick={() => onSelectSession(session.sessionId)}
+                                className={`w-full text-left px-3 py-2 rounded-xl text-[13px] transition-all truncate pr-8 ${currentSessionId === session.sessionId
+                                    ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white font-medium shadow-sm'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                <div className="flex-1 min-w-0">
+                                    <span className="truncate block">{session.title || 'Untitled'}</span>
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5">
+                                        {session.messageCount ?? 0} msgs · {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : ''}
+                                    </span>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenSessionMenu(openSessionMenu === session.sessionId ? null : session.sessionId);
+                                }}
+                                className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all ${
+                                    openSessionMenu === session.sessionId 
+                                    ? 'opacity-100 bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white' 
+                                    : 'opacity-0 group-hover/session:opacity-100 text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white'
                                 }`}
-                        >
-                            <div className="flex-1 min-w-0">
-                                <span className="truncate block">{session.title || 'Untitled'}</span>
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5">
-                                    {session.messageCount ?? 0} msgs · {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : ''}
-                                </span>
-                            </div>
-                        </button>
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                            </button>
+
+                            {openSessionMenu === session.sessionId && (
+                                <div className="absolute top-10 right-2 w-32 bg-white dark:bg-[#202123] border border-slate-200 dark:border-white/10 rounded-xl shadow-lg overflow-hidden z-[100] animate-fade-in">
+                                    <div className="p-1">
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                alert("Share functionality to be integrated later.");
+                                                setOpenSessionMenu(null);
+                                            }}
+                                            className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-[12px] transition-colors"
+                                        >
+                                            Share
+                                            <svg className="text-indigo-400" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                                        </button>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (onDeleteSession) onDeleteSession(session.sessionId);
+                                                setOpenSessionMenu(null);
+                                            }}
+                                            className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 text-[12px] transition-colors"
+                                        >
+                                            Delete
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </div>
             </div>
@@ -93,10 +156,48 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
                     </div>
                 </button>
 
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">
-                    <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] text-white font-bold">{user.name[0]}</div>
-                    <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{user.name}</span>
-                </button>
+                <div className="relative" ref={profileMenuRef}>
+                    {/* Popover Menu */}
+                    {isProfileMenuOpen && (
+                        <div className="absolute bottom-full left-0 mb-2 w-[240px] bg-white dark:bg-[#202123] border border-slate-200 dark:border-white/10 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_15px_rgba(0,0,0,0.5)] overflow-hidden z-[100] animate-fade-in origin-bottom-left">
+                            <div className="p-3 border-b border-slate-200 dark:border-white/10">
+                                <div className="text-[13px] font-semibold text-slate-900 dark:text-white truncate">{user.name}</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user.email}</div>
+                            </div>
+                            <div className="p-1.5">
+                                <Link
+                                    to="/settings"
+                                    onClick={() => setIsProfileMenuOpen(false)}
+                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-[13px] transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                    Settings
+                                </Link>
+                            </div>
+                            <div className="p-1.5 border-t border-slate-200 dark:border-white/10">
+                                <button
+                                    onClick={logout}
+                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-[13px] transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                    Log out
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Profile Button */}
+                    <button 
+                        onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-500 dark:text-slate-400 transition-all ${isProfileMenuOpen ? 'bg-slate-200/40 dark:bg-white/5' : 'hover:bg-slate-200/40 dark:hover:bg-white/5'}`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] text-white font-bold">{user.name[0]}</div>
+                            <span className="text-[13px] font-semibold text-slate-900 dark:text-white transition-colors">{user.name}</span>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                </div>
             </div>
         </div>
     );

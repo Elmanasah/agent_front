@@ -5,6 +5,7 @@ import Register from '../pages/Register';
 import Dashboard from '../pages/Dashboard';
 import WebsocketChat from '../components/WebsocketChat';
 import Landing from '../pages/Landing';
+import Settings from '../pages/Settings';
 
 export default function AppRoutes() {
     return (
@@ -29,6 +30,14 @@ export default function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <WebsocketChat />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <ProtectedRoute>
+                        <Settings />
                     </ProtectedRoute>
                 }
             />

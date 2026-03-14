@@ -7,7 +7,8 @@ import HistorySidebar from './HistorySidebar';
 import KnowledgeBase from './KnowledgeBase';
 import { useGemini } from '../hooks/useGemini';
 import { useDevices } from '../hooks/useDevices';
-import api from '../api/axios';
+import SessionService from '../api/session-services';
+import TokenService from '../api/token-services';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'ws://localhost:3000';
 
@@ -62,8 +63,8 @@ export default function WebsocketChat() {
 
     // Load sessions from server on mount
     useEffect(() => {
-        api.get('/sessions')
-            .then(({ data }) => setHistory(data.sessions || []))
+        SessionService.list()
+            .then((data) => setHistory(data.sessions || []))
             .catch(err => console.warn('[sessions] Could not load:', err.message));
     }, []);
 
@@ -90,12 +91,12 @@ export default function WebsocketChat() {
     const handleConnect = async () => {
         try {
             // 1. Fetch GCP Config
-            const configResp = await api.get('/token/config');
-            const { projectId, location } = configResp.data;
+            const configResp = await TokenService.getConfig();
+            const { projectId, location } = configResp;
 
             // 2. Fetch Access Token (now securely via JWT)
-            const tokenResp = await api.get('/token');
-            const { token: accessToken } = tokenResp.data;
+            const tokenResp = await TokenService.getToken();
+            const { token: accessToken } = tokenResp;
 
             if (!projectId || !accessToken) {
                 throw new Error('Missing GCP configuration or token');

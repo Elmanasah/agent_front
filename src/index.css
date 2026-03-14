@@ -81,6 +81,15 @@ body {
   @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
 }
 
+/* Hide scrollbar for cleanly scrolled regions */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
 ::selection {
   @apply bg-indigo-500/30 text-current;
 }

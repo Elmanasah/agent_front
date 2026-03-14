@@ -5,7 +5,9 @@ import InputBar from '../components/InputBar';
 import HistorySidebar from '../components/HistorySidebar';
 import KnowledgeBase from '../components/KnowledgeBase';
 import Canvas from '../components/Canvas';
-import api from '../api/axios'; // Centralized Axios instance
+import ChatService from '../api/chat-services';
+import ImageService from '../api/image-services';
+import SessionService from '../api/session-services';
 
 export default function Dashboard() {
     const [messages, setMessages] = useState([]);
@@ -66,7 +68,7 @@ export default function Dashboard() {
         setError(null);
 
         try {
-            const { data } = await api.post('/chat', {
+            const data = await ChatService.chat({
                 message: text,
                 attachments,
                 sessionId: currentSessionId
@@ -77,7 +79,7 @@ export default function Dashboard() {
             // Save sessionId from server and refresh sidebar on first message
             if (data.sessionId && !currentSessionId) {
                 setCurrentSessionId(data.sessionId);
-                api.get('/sessions').then(({ data: d }) => setHistory(d.sessions || []));
+                SessionService.list().then((d) => setHistory(d.sessions || []));
             }
 
             // Unified Parser for specialized blocks
@@ -124,7 +126,7 @@ export default function Dashboard() {
         setError(null);
 
         try {
-            const { data } = await api.post('/image/generate', { prompt });
+            const data = await ImageService.generate({ prompt });
 
             setCanvasContent(prev => [...prev, { type: 'image', value: data.imageUrl }]);
 
@@ -156,14 +158,14 @@ export default function Dashboard() {
 
     // Load sessions from server on mount
     useEffect(() => {
-        api.get('/sessions')
-            .then(({ data }) => setHistory(data.sessions || []))
+        SessionService.list()
+            .then((data) => setHistory(data.sessions || []))
             .catch(err => console.warn('[sessions] Could not load:', err.message));
     }, []);
 
     const resetChat = async () => {
         try {
-            await api.post('/chat/reset', { sessionId: currentSessionId });
+            await ChatService.reset({ sessionId: currentSessionId });
         } catch { /* silent */ }
         setMessages([]);
         setCanvasContent([]);
@@ -171,9 +173,23 @@ export default function Dashboard() {
         setError(null);
     };
 
+    const deleteSession = async (sessionId) => {
+        try {
+            await SessionService.remove(sessionId);
+            setHistory(prev => prev.filter(s => s.sessionId !== sessionId));
+            if (currentSessionId === sessionId) {
+                setMessages([]);
+                setCanvasContent([]);
+                setCurrentSessionId(null);
+            }
+        } catch (err) {
+            console.error('[deleteSession]', err.message);
+        }
+    };
+
     const selectSession = async (sessionId) => {
         try {
-            const { data } = await api.get(`/sessions/${sessionId}`);
+            const data = await SessionService.get(sessionId);
             if (data.session) {
                 setCurrentSessionId(sessionId);
                 // Convert Vertex AI history format to display format
@@ -214,6 +230,7 @@ export default function Dashboard() {
                         history={history}
                         currentSessionId={currentSessionId}
                         onSelectSession={selectSession}
+                        onDeleteSession={deleteSession}
                         onNewChat={resetChat}
                         isOpen={isSidebarOpen}
                         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
