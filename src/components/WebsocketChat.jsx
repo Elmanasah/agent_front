@@ -163,12 +163,13 @@ export default function WebsocketChat() {
               className={`flex flex-col flex-1 transition-all duration-500 ease-in-out ${isCanvasOpen ? "w-[55%]" : "w-full"}`}
             >
               {/* ── Control Bar ───────────────────── */}
-              <div className="flex items-center justify-between p-4 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-white/10 glass z-10">
-                <div className="flex items-center gap-3 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-white/10 glass z-10">
+                {/* Left side: hamburger + status + camera controls */}
+                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
                   {!isSidebarOpen && (
                     <button
                       onClick={() => setIsSidebarOpen(true)}
-                      className="md:hidden p-2 -ml-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all"
+                      className="md:hidden p-2 -ml-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all shrink-0"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -187,7 +188,9 @@ export default function WebsocketChat() {
                       </svg>
                     </button>
                   )}
-                  <div className="flex items-center gap-2">
+
+                  {/* Status badge */}
+                  <div className="flex items-center gap-2 shrink-0">
                     <span className="text-sm text-slate-500 dark:text-slate-400">
                       Status:
                     </span>
@@ -206,14 +209,9 @@ export default function WebsocketChat() {
                     </span>
                   </div>
 
-                  {/* {status === 'disconnected' && (
-                                        <div className="text-sm text-slate-400 dark:text-slate-500 italic">
-                                            Ready to connect to Google Cloud Vertex AI
-                                        </div>
-                                    )} */}
-
+                  {/* Camera / Screen controls — only shown when connected */}
                   {status === "connected" && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <select
                         onChange={(e) => setSelectedCamera(e.target.value)}
                         className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg text-xs p-1 text-slate-800 dark:text-slate-200"
@@ -233,7 +231,7 @@ export default function WebsocketChat() {
                             selectedCamera,
                           );
                         }}
-                        className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium"
+                        className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium shrink-0"
                       >
                         📷 Cam
                       </button>
@@ -242,7 +240,7 @@ export default function WebsocketChat() {
                           setShowVision(!showVision);
                           startScreen(videoRef.current, canvasRef.current);
                         }}
-                        className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium"
+                        className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium shrink-0"
                       >
                         🖥️ Screen
                       </button>
@@ -250,7 +248,8 @@ export default function WebsocketChat() {
                   )}
                 </div>
 
-                <div className="ml-4 flex gap-2">
+                {/* Right side: mic + connect/disconnect */}
+                <div className="flex items-center gap-2 shrink-0">
                   {status !== "disconnected" && (
                     <button
                       onClick={toggleMic}
