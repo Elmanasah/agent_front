@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Landing() {
@@ -18,6 +18,10 @@ export default function Landing() {
         return <div className="min-h-screen bg-slate-950 flex items-center justify-center">
             <div className="w-16 h-16 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin"></div>
         </div>;
+    }
+
+    if (user) {
+        return <Navigate to="/dashboard" replace />;
     }
 
     return (
