@@ -18,7 +18,115 @@ Horus operates just like a real-life tutor sitting across the desk from you, uti
 - **Interactive Learning Canvas:** Horus doesn't just tell you the answer; he shows you the work. Using a shared digital canvas, Horus can visually summarize entire topics with custom diagrams, break down equations step-by-step, and collaborate with you to solve complex problems in real-time.
 - **Context-Aware Mentorship:** Because Horus can see your physical workspace and hear your tone, he adapts his teaching style to your specific context, guiding your curiosity rather than just spitting out robotic facts.
 
+## 🛠️ Getting Started
+
+Follow these instructions to set up Horus on your local machine.
+
+### Prerequisites
+- **Node.js**: v18+ recommended.
+- **NPM**: or Yarn/PNPM.
+- **Google Cloud Account**: For Vertex AI, Vector Search, and GCS.
+- **CockroachDB**: Serverless account (or localized PostgreSQL).
+
+### 1. Installation
+
+Clone the repository and install dependencies for both the frontend and backend.
+
+```bash
+# Install Backend Dependencies
+cd agent_server
+npm install
+
+# Install Frontend Dependencies
+cd ../agent_front
+npm install
+```
+
+### 2. Environment Configuration
+
+#### Backend (`agent_server`)
+1. Create a `.env` file in the `agent_server` directory by copying `.env.example`.
+2. Populate the following critical variables:
+   - `SECRET_KEY`: Your JWT secret.
+   - `DATABASE_URL`: Connection string for your CockroachDB.
+   - `GOOGLE_CLOUD_PROJECT`: Your GCP Project ID.
+   - `GCS_BUCKET_NAME`: Bucket for RAG content.
+3. **Google Cloud Secrets**:
+   - Obtain a Service Account key from GCP with Vertex AI and GCS permissions.
+   - Save the key as `secret.json` in the `agent_server` root.
+   - Ensure `GOOGLE_APPLICATION_CREDENTIALS` in your `.env` points to `./secret.json`.
+
+#### Frontend (`agent_front`)
+1. Create a `.env` file in the `agent_front` directory.
+2. Add the backend API URL:
+   ```env
+   VITE_API_URL=http://localhost:3000
+   ```
+
+### 3. Running the Application
+
+```bash
+# Start Backend (from agent_server)
+npm run dev
+
+# Start Frontend (from agent_front)
+npm run dev
+```
+
+## 🚀 How to Use
+
+Follow these steps to start your learning journey with Horus:
+
+### 1. User Authentication
+- **Google OAuth**: Sign in instantly using your Google account for a seamless experience.
+- **Email & OTP**: Alternatively, register/login with your email address. Horus will send a **One-Time Password (OTP)** to your inbox to verify your identity.
+- **Persistence**: Authentication ensures your session history and knowledge base are securely saved across devices.
+
+### 2. Multimedia Support (Files & Images)
+- **Upload**: In the **Standard Chat** mode, use the attachment icon to upload PDFs, text files, or images (JPG/PNG).
+- **Processing**: Once uploaded, you can ask Horus to summarize documents, explain diagrams in images, or extract key data from your files.
+
+### 2. Choose Your Interaction Mode
+Horus supports two ways of communicating:
+- **Standard Chat (HTTP/SSE)**: Use the main chat interface for text-based questions and file attachments. This uses Server-Sent Events (SSE) for a smooth, streaming text experience.
+- **Live Mentor (WebSocket/Socket)**: Navigate to the **Socket** page for the "All-Seeing" mentor experience. This mode enables low-latency voice and vision.
+
+### 3. Start a Live Session (Socket Mode)
+- Navigate to the **Socket** page.
+- Click the **Connect** button in the top-right corner.
+- Once connected, you'll see a green "CONNECTED" status.
+
+### 4. Live Interaction (Voice & Vision)
+- **Voice**: Click the **🎙️ Live** button to unmute your microphone.
+- **Vision**: Use the **📷 Cam** or **🖥️ Screen** buttons to share your visual context (e.g., your notebook or a PDF).
+- **Audio Output**: Horus will respond with real-time audio. Ensure your sound is enabled.
+
+### 5. Using the Interactive Canvas
+- Whenever Horus explains a complex concept (in either mode), he will trigger the **Canvas Workspace**.
+- **Math Visualization**: Interactive graphs and plots via `Mafs`.
+- **Diagrams**: Logic flows and architecture via `Mermaid.js`.
+- **Image Generation**: Custom educational images generated via `Imagen 3`.
+- **Markdown Notes**: Step-by-step notes and quizzes.
+
+### 6. Knowledge Base & History
+- Use the **Sidebar** to review past sessions.
+- Open the **Knowledge Base** (KB) to upload documents that Horus should reference during your study sessions.
+
+## 💡 Example Prompts
+
+Not sure what to ask? Try these prompts to see Horus in action:
+
+- **Mathematics**: "Look at this calculus problem in my notebook [shares camera]. Can you explain the steps to solve it and plot the derivative on the canvas?"
+- **Document Analysis**: [Uploads a PDF] "Can you summarize the key findings of this research paper and list the most important citations?"
+- **Visual Reasoning**: [Uploads an image] "Explain the circuit diagram in this photo and tell me if the connections look correct."
+- **Computer Science**: "Explain the difference between Microservices and Monolithic architectures. Please draw a comparison diagram on the canvas."
+- **Study Aid (RAG)**: "I've uploaded my lecture notes. Can you summarize the key concepts of Chapter 3 and create a 5-question quiz for me?"
+- **Visual Learning**: "I'm having trouble visualizing a black hole's event horizon. Can you generate an image to show its structure?"
+- **Collaborative Writing**: "Let's outline a research paper on AI Ethics. Use the canvas to keep a structured list of our main arguments."
+
 ## Horus Tech Stack: Detailed Architecture
+
+![Horus Architecture](./public/digram.png)
 
 Horus is built on a modern, multimodal "AI-Native" stack designed for high-performance tutoring and real-time visual collaboration.
 
