@@ -18,7 +18,93 @@ Horus operates just like a real-life tutor sitting across the desk from you, uti
 - **Interactive Learning Canvas:** Horus doesn't just tell you the answer; he shows you the work. Using a shared digital canvas, Horus can visually summarize entire topics with custom diagrams, break down equations step-by-step, and collaborate with you to solve complex problems in real-time.
 - **Context-Aware Mentorship:** Because Horus can see your physical workspace and hear your tone, he adapts his teaching style to your specific context, guiding your curiosity rather than just spitting out robotic facts.
 
+## 🛠️ Getting Started
+
+Follow these instructions to set up Horus on your local machine.
+
+### Prerequisites
+- **Node.js**: v18+ recommended.
+- **NPM**: or Yarn/PNPM.
+- **Google Cloud Account**: For Vertex AI, Vector Search, and GCS.
+- **CockroachDB**: Serverless account (or localized PostgreSQL).
+
+### 1. Installation
+
+Clone the repository and install dependencies for both the frontend and backend.
+
+```bash
+# Install Backend Dependencies
+cd agent_server
+npm install
+
+# Install Frontend Dependencies
+cd ../agent_front
+npm install
+```
+
+### 2. Environment Configuration
+
+#### Backend (`agent_server`)
+1. Create a `.env` file in the `agent_server` directory by copying `.env.example`.
+2. Populate the following critical variables:
+   - `SECRET_KEY`: Your JWT secret.
+   - `DATABASE_URL`: Connection string for your CockroachDB.
+   - `GOOGLE_CLOUD_PROJECT`: Your GCP Project ID.
+   - `GCS_BUCKET_NAME`: Bucket for RAG content.
+3. **Google Cloud Secrets**:
+   - Obtain a Service Account key from GCP with Vertex AI and GCS permissions.
+   - Save the key as `secret.json` in the `agent_server` root.
+   - Ensure `GOOGLE_APPLICATION_CREDENTIALS` in your `.env` points to `./secret.json`.
+
+#### Frontend (`agent_front`)
+1. Create a `.env` file in the `agent_front` directory.
+2. Add the backend API URL:
+   ```env
+   VITE_API_URL=http://localhost:3000
+   ```
+
+### 3. Running the Application
+
+```bash
+# Start Backend (from agent_server)
+npm run dev
+
+# Start Frontend (from agent_front)
+npm run dev
+```
+
+## 🚀 How to Use
+
+Follow these steps to start your learning journey with Horus:
+
+### 1. Connect to the Mentor
+- Navigate to the **Socket** page (Live Session).
+- Click the **Connect** button in the top-right corner.
+- Once connected, you'll see a green "CONNECTED" status and the sidebar will populate with your session history.
+
+### 2. Live Interaction (Voice & Vision)
+- **Voice**: Click the **🎙️ Live** button to unmute your microphone. You can now speak naturally to Horus.
+- **Vision**: Use the **📷 Cam** or **🖥️ Screen** buttons to share your visual context. Horus can see your notebooks, PDFs, or IDE and provide real-time feedback.
+- **Audio Output**: Horus will respond with live voice output. Ensure your speakers are on!
+
+### 3. Using the Interactive Canvas
+- Whenever Horus explains a complex concept, he will trigger the **Canvas Workspace**.
+- **Math Visualization**: Interactive graphs and plots will appear automatically when discussing functions or geometry.
+- **Diagrams**: Logic flows and architecture diagrams (via Mermaid) will render in the workspace.
+- **Image Generation**: If inspired, Horus can generate and display custom educational images.
+- **Markdown Notes**: Step-by-step explanations and quizzes are rendered as structured notes that you can copy or share.
+
+### 4. Knowledge Base & History
+- Use the **Sidebar** to jump between past learning sessions.
+- Open the **Knowledge Base** (KB) to upload and manage documents that Horus should use as context for your tutoring.
+
+### 5. Personalization
+- Use the **Theme Toggle** in the sidebar to switch between Dark and Light modes.
+- Access **Settings** to update your profile and preferences.
+
 ## Horus Tech Stack: Detailed Architecture
+
+![Horus Architecture](./public/digram.png)
 
 Horus is built on a modern, multimodal "AI-Native" stack designed for high-performance tutoring and real-time visual collaboration.
 
