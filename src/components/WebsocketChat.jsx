@@ -10,8 +10,6 @@ import { useDevices } from "../hooks/useDevices";
 import SessionService from "../api/session-services";
 import TokenService from "../api/token-services";
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "ws://localhost:3000";
-
 export default function WebsocketChat() {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
@@ -21,8 +19,10 @@ export default function WebsocketChat() {
   );
   const [isKBOpen, setIsKBOpen] = useState(false);
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
-  const [canvasContent, setCanvasContent] = useState("");
+  const [canvasContent, setCanvasContent] = useState([]);  // Array of { type, value, title? }
   const [isCanvasWriting, setIsCanvasWriting] = useState(false);
+  const [canvasWidth, setCanvasWidth] = useState(window.innerWidth * 0.55);
+  const [isResizing, setIsResizing] = useState(false);
   const [showVision, setShowVision] = useState(false);
   const [selectedCamera, setSelectedCamera] = useState("");
 
@@ -42,6 +42,8 @@ export default function WebsocketChat() {
     stopCamera,
     startScreen,
     stopScreen,
+    toolResults,
+    clearToolResults,
   } = useGemini();
 
   const { cameras } = useDevices();
@@ -77,20 +79,58 @@ export default function WebsocketChat() {
     navigate("/", { state: { sessionId } });
   };
 
-  // Sync canvas content from messages (simplified for this refactor)
+  // Canvas resizing
+  const startResizing = (e) => { e.preventDefault(); setIsResizing(true); };
+  const stopResizing = () => setIsResizing(false);
+  const resize = (e) => {
+    if (isResizing) {
+      const w = window.innerWidth - e.clientX;
+      if (w > 350 && w < window.innerWidth * 0.8) setCanvasWidth(w);
+    }
+  };
+
   useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (
-      lastMessage?.role === "assistant" &&
-      lastMessage.text.includes("```canvas")
-    ) {
-      setIsCanvasOpen(true);
-      const match = lastMessage.text.match(/```canvas([\s\S]*?)```/);
-      if (match) {
-        setCanvasContent(match[1].trim());
+    if (isResizing) {
+      window.addEventListener('mousemove', resize);
+      window.addEventListener('mouseup', stopResizing);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    } else {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    }
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [isResizing]);
+
+  // Drive Canvas from live agent tool results
+  useEffect(() => {
+    if (!toolResults || toolResults.length === 0) return;
+
+    for (const result of toolResults) {
+      if (result.canvas) {
+        setIsCanvasOpen(true);
+        setCanvasContent(prev => [...prev, { type: 'text', value: result.canvas.markdown, title: result.canvas.title }]);
+      }
+      if (result.diagram) {
+        setIsCanvasOpen(true);
+        setCanvasContent(prev => [...prev, { type: 'mermaid', value: result.diagram.syntax, title: result.diagram.title }]);
+      }
+      if (result.math) {
+        setIsCanvasOpen(true);
+        setCanvasContent(prev => [...prev, { type: 'math', value: result.math.json, title: result.math.title }]);
+      }
+      if (result.image) {
+        setIsCanvasOpen(true);
+        setCanvasContent(prev => [...prev, { type: 'image', value: result.image.url, title: result.image.prompt }]);
       }
     }
-  }, [messages]);
+    clearToolResults();
+  }, [toolResults]);
 
   const handleConnect = async () => {
     try {
@@ -195,15 +235,14 @@ export default function WebsocketChat() {
                       Status:
                     </span>
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${
-                        status === "connected" || status === "speaking"
-                          ? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/20"
-                          : status === "connecting"
-                            ? "bg-amber-500/20 text-amber-500 border border-amber-500/20"
-                            : error
-                              ? "bg-rose-500/20 text-rose-500 border border-rose-500/20"
-                              : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10"
-                      }`}
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider ${status === "connected" || status === "speaking"
+                        ? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/20"
+                        : status === "connecting"
+                          ? "bg-amber-500/20 text-amber-500 border border-amber-500/20"
+                          : error
+                            ? "bg-rose-500/20 text-rose-500 border border-rose-500/20"
+                            : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10"
+                        }`}
                     >
                       {status.toUpperCase()}
                     </span>
@@ -248,8 +287,31 @@ export default function WebsocketChat() {
                   )}
                 </div>
 
-                {/* Right side: mic + connect/disconnect */}
+                {/* Right side: workspace + mic + connect/disconnect */}
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* Open Workspace button — shown when canvas has content but panel is closed */}
+                  {!isCanvasOpen && canvasContent.length > 0 && (
+                    <button
+                      onClick={() => setIsCanvasOpen(true)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-full text-xs font-bold transition-all animate-fade-in border border-indigo-500/20"
+                    >
+                      <span className="text-amber-400">✨</span>
+                      OPEN WORKSPACE
+                    </button>
+                  )}
+
+                  {/* Toggle workspace button — always available when connected */}
+                  {status !== "disconnected" && (
+                    <button
+                      onClick={() => setIsCanvasOpen(!isCanvasOpen)}
+                      className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1.5 border ${isCanvasOpen ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white"}`}
+                      title={isCanvasOpen ? "Close Workspace" : "Open Workspace"}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                      {isCanvasOpen ? "Hide" : "Canvas"}
+                    </button>
+                  )}
+
                   {status !== "disconnected" && (
                     <button
                       onClick={toggleMic}
@@ -309,12 +371,28 @@ export default function WebsocketChat() {
             </div>
 
             {/* ── Canvas Side Panel ───────────────────────── */}
-            <Canvas
-              content={canvasContent}
-              isOpen={isCanvasOpen}
-              onClose={() => setIsCanvasOpen(false)}
-              isWriting={isCanvasWriting}
-            />
+            {isCanvasOpen && (
+              <div
+                className={`flex h-full relative ${isCanvasOpen ? 'max-md:fixed max-md:inset-0 max-md:z-[100]' : ''}`}
+                style={{ width: window.innerWidth < 768 ? '100%' : `${canvasWidth}px` }}
+              >
+                <div
+                  onMouseDown={startResizing}
+                  className={`hidden md:flex w-1.5 h-full cursor-col-resize hover:bg-amber-500/20 active:bg-amber-500/40 transition-colors z-[50] relative group items-center justify-center ${isResizing ? 'bg-amber-500/30' : ''}`}
+                >
+                  <div className="w-[1px] h-12 bg-amber-500/30 group-hover:bg-amber-500/50 transition-colors" />
+                </div>
+                <div className="flex-1 h-full overflow-hidden">
+                  <Canvas
+                    content={canvasContent}
+                    isOpen={isCanvasOpen}
+                    onClose={() => setIsCanvasOpen(false)}
+                    isWriting={isCanvasWriting}
+                    width={window.innerWidth < 768 ? window.innerWidth : canvasWidth}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
