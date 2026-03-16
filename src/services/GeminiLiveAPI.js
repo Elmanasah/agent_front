@@ -1,9 +1,6 @@
-/**
- * GeminiLiveAPI
- */
 
-// Auto-normalise the URL protocol: http(s) → ws(s) for the WebSocket constructor
-const PROXY_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+
+const PROXY_URL = import.meta.env.VITE_SOCKET_URL || 'ws://localhost:3000';
 
 export class GeminiLiveAPI {
   constructor({ projectId, location, model, apiHost }) {
@@ -15,15 +12,12 @@ export class GeminiLiveAPI {
     // For Vertex AI LlmBidiService
     this.serviceUrl = `wss://${this.apiHost}/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
 
-    // For AI Studio (fallback/alternative)
-    // this.serviceUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
-
     this.ws = null;
-    this.responseModalities = ["AUDIO"];
     this.systemInstructions = "";
 
     this.onReceiveResponse = () => { };
     this.onConnectionStarted = () => { };
+    this.onToolResult = () => { };
     this.onError = (msg) => console.error("[GeminiLiveAPI]", msg);
     this.onDisconnected = () => { };
   }
@@ -102,6 +96,13 @@ export class GeminiLiveAPI {
           "[GeminiLiveAPI] setupComplete → calling onConnectionStarted",
         );
         this.onConnectionStarted();
+        return;
+      }
+
+      // Handle rich tool_result payloads from the server (canvas, diagram, math, image)
+      if (data.tool_result) {
+        console.log("[GeminiLiveAPI] tool_result received:", data.tool_result.name);
+        this.onToolResult(data.tool_result);
         return;
       }
 

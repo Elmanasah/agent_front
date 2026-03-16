@@ -45,7 +45,7 @@ export default function Landing() {
 
     return (
         <div ref={mainRef} className="bg-white dark:bg-[#050505] min-h-screen text-slate-900 dark:text-white font-sans transition-colors duration-500 overflow-x-hidden selection:bg-indigo-500/30">
-            
+
             <Navbar />
 
             <main>
@@ -61,16 +61,16 @@ export default function Landing() {
                             </h1>
                         </div>
                     </div>
-                    
+
                     {/* Right Side: Image spanning screen - now top on mobile */}
                     <div className="relative md:absolute md:top-1/2 md:-translate-y-1/2 md:-right-12 lg:-right-20 w-full md:w-[75%] h-[55vh] md:h-full flex items-center justify-center md:justify-end pointer-events-none hero-image-animate mb-8 md:mb-0">
                         {/* Background flare behind image - optimized for both modes */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] sm:w-[500px] md:w-[700px] h-[350px] sm:h-[500px] md:h-[700px] bg-indigo-500/15 dark:bg-purple-600/20 mix-blend-multiply dark:mix-blend-screen blur-[80px] md:blur-[120px] rounded-full z-0"></div>
-                        
+
                         <div className="relative w-[115%] md:w-full h-[120%] md:h-[110%] flex justify-center md:justify-end translate-x-[5%] md:-translate-x-20">
-                            <img 
-                                src="/hero.webp" 
-                                alt="Horus AI visualization" 
+                            <img
+                                src="/hero.webp"
+                                alt="Horus AI visualization"
                                 className="w-full h-full object-contain object-center md:object-right drop-shadow-2xl relative z-10 pointer-events-auto scale-110 md:scale-100"
                             />
                             {/* Floating Symbols matching the references */}
@@ -91,7 +91,7 @@ export default function Landing() {
                         </div>
                     </div>
                 </section>
-                
+
                 {/* Features Section */}
                 <section id="features" className="features-section relative min-h-[120vh] py-32 flex flex-col items-center justify-center overflow-hidden bg-slate-50/50 dark:bg-transparent">
                     {/* Background Text Overlay */}
@@ -116,7 +116,7 @@ export default function Landing() {
                             <div className="md:hidden bg-glow-immersive bottom-[10%] left-[-10%]"></div>
 
                             {/* Card 1: Real-Time Calls */}
-                            <div className="feature-card-mobile feature-card reveal bg-slate-100/70 dark:bg-[#0a0a0a]/80 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 flex flex-col items-center text-center shadow-2xl hover:border-indigo-500/50 transition-colors duration-500 relative overflow-hidden group">
+                            <div className="feature-card-mobile feature-card reveal bg-slate-100/70 dark:bg-[#0a0a0a]/80 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 flex flex-col items-center text-center shadow-2xl hover:border-indigo-500/50 transition-colors duration-500 relative overflow-hidden group md:py-16">
                                 <span className="feature-index-number md:hidden">01</span>
                                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <h3 className="text-2xl md:text-3xl font-bold mb-2 relative z-10">
@@ -131,7 +131,7 @@ export default function Landing() {
                             </div>
 
                             {/* Card 2: Dynamic Visuals */}
-                            <div className="feature-card-mobile feature-card reveal reveal-delay-2 bg-slate-100/70 dark:bg-[#0a0a0a]/80 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 flex flex-col items-center text-center shadow-2xl hover:border-emerald-500/50 transition-colors duration-500 relative overflow-hidden group md:mt-16">
+                            <div className="feature-card-mobile feature-card reveal reveal-delay-2 bg-slate-100/70 dark:bg-[#0a0a0a]/80 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 flex flex-col items-center text-center shadow-2xl hover:border-emerald-500/50 transition-colors duration-500 relative overflow-hidden group md:py-16">
                                 <span className="feature-index-number md:hidden">02</span>
                                 <div className="absolute inset-0 bg-gradient-to-bl from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <h3 className="text-2xl md:text-3xl font-bold mb-2 relative z-10">
@@ -146,7 +146,7 @@ export default function Landing() {
                             </div>
 
                             {/* Card 3: Interactive Canvas */}
-                            <div className="feature-card-mobile feature-card reveal reveal-delay-1 bg-slate-100/70 dark:bg-[#0a0a0a]/80 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 flex flex-col items-center text-center shadow-2xl hover:border-amber-500/50 transition-colors duration-500 relative overflow-hidden group">
+                            <div className="feature-card-mobile feature-card reveal reveal-delay-1 bg-slate-100/70 dark:bg-[#0a0a0a]/80 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 flex flex-col items-center text-center shadow-2xl hover:border-amber-500/50 transition-colors duration-500 relative overflow-hidden group md:py-16">
                                 <span className="feature-index-number md:hidden">03</span>
                                 <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <h3 className="text-2xl md:text-3xl font-bold mb-2 relative z-10">
@@ -161,7 +161,7 @@ export default function Landing() {
                             </div>
 
                             {/* Card 4: Context Awareness */}
-                            <div className="feature-card-mobile feature-card reveal reveal-delay-2 bg-slate-100/70 dark:bg-[#0a0a0a]/80 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 flex flex-col items-center text-center shadow-2xl hover:border-rose-500/50 transition-colors duration-500 relative overflow-hidden group md:mt-16">
+                            <div className="feature-card-mobile feature-card reveal reveal-delay-2 bg-slate-100/70 dark:bg-[#0a0a0a]/80 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 md:p-10 flex flex-col items-center text-center shadow-2xl hover:border-rose-500/50 transition-colors duration-500 relative overflow-hidden group md:py-16">
                                 <span className="feature-index-number md:hidden">04</span>
                                 <div className="absolute inset-0 bg-gradient-to-tl from-rose-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <h3 className="text-2xl md:text-3xl font-bold mb-2 relative z-10">
@@ -174,22 +174,22 @@ export default function Landing() {
                                     <p>- RAG-powered deep domain knowledge retrieval</p>
                                 </div>
                             </div>
-                            
+
                         </div>
                     </div>
                 </section>
 
                 {/* About Section */}
                 <section id="about" className="about-section relative py-32 overflow-hidden border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#080808]">
-                    
+
                     <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
-                        
+
                         {/* Abstract Geometry Left Side */}
                         <div className="relative h-[500px] w-full hidden md:flex items-center justify-center reveal">
                             <div className="absolute w-[400px] h-[400px] rounded-full border border-indigo-500/20 about-shape backdrop-blur-sm animate-float"></div>
                             <div className="absolute w-[300px] h-[300px] rounded-[50px] border border-purple-500/30 rotate-45 about-shape backdrop-blur-md animate-blob"></div>
                             <div className="absolute w-[200px] h-[200px] rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 opacity-20 blur-3xl about-shape"></div>
-                            <svg className="w-24 h-24 text-indigo-500/50 about-shape animate-float animation-delay-2000" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+                            <svg className="w-24 h-24 text-indigo-500/50 about-shape animate-float animation-delay-2000" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><circle cx="12" cy="12" r="10" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /><path d="M2 12h20" /></svg>
                         </div>
 
                         {/* Text Content Right Side - Event Highlights Format */}

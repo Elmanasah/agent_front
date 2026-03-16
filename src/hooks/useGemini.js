@@ -4,7 +4,7 @@ import { AudioInputManager, AudioOutputManager } from "../services/AudioManager"
 import { VideoManager, ScreenManager } from "../services/VideoManager";
 import ChatService from "../api/chat-services";
 
-// The server proxy handles GCP auth — we only need to pass our JWT
+// Default system prompt when none is provided by the caller
 const DEFAULT_SYSTEM = `You are Horus, a real-time vision and voice AI assistant. You can see, hear, search knowledge bases, generate images, and render diagrams. Keep responses concise and proactive.`;
 
 const MODEL = "gemini-live-2.5-flash-native-audio";
@@ -16,6 +16,7 @@ export function useGemini() {
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState(null);
   const [micMuted, setMicMuted] = useState(false);
+  const [toolResults, setToolResults] = useState([]);
 
   const geminiRef = useRef(null);
   const audioOutRef = useRef(new AudioOutputManager());
@@ -79,6 +80,10 @@ export function useGemini() {
         setError(msg);
         setStatus("disconnected");
         _stopAll();
+      };
+
+      api.onToolResult = (result) => {
+        setToolResults(prev => [...prev, result]);
       };
 
       geminiRef.current = api;
@@ -153,9 +158,8 @@ export function useGemini() {
         return;
       }
 
-      // Fallback: SSE streaming chat
+      // Fallback: SSE streaming chat (when live WebSocket is not connected)
       try {
-        const assistantMsgIndex_placeholder = null; // We don't have index here easily, just append
         await ChatService.streamChat({
           message: text,
           attachments: attachments.map(a => ({ data: a.data, mimeType: a.mimeType })),
@@ -194,5 +198,7 @@ export function useGemini() {
     startScreen,
     stopScreen,
     clearError: () => setError(null),
+    toolResults,
+    clearToolResults: () => setToolResults([]),
   };
 }
