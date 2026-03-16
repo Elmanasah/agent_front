@@ -44,6 +44,7 @@ export default function WebsocketChat() {
     stopScreen,
     toolResults,
     clearToolResults,
+    clearError,
   } = useGemini();
 
   const { cameras } = useDevices();
@@ -78,6 +79,22 @@ export default function WebsocketChat() {
   const selectSession = (sessionId) => {
     navigate("/", { state: { sessionId } });
   };
+
+  const deleteSession = async (sessionId) => {
+    try {
+      await SessionService.remove(sessionId);
+      setHistory(prev => prev.filter(s => s.sessionId !== sessionId));
+    } catch (err) {
+      console.error('[deleteSession]', err.message);
+    }
+  };
+
+  // Auto-dismiss error after 5 seconds
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => clearError(), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
 
   // Canvas resizing
   const startResizing = (e) => { e.preventDefault(); setIsResizing(true); };
@@ -162,6 +179,18 @@ export default function WebsocketChat() {
 
   return (
     <div className="flex flex-col h-screen bg-transparent text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 selection:text-current overflow-hidden">
+      {/* ── Native Error Toast ─────────────────────── */}
+      {error && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-fade-in">
+          <div className="flex items-center gap-3 px-5 py-3 bg-rose-600 text-white rounded-2xl shadow-2xl shadow-rose-500/30 text-sm font-medium max-w-md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+            <span className="flex-1 line-clamp-2">{error}</span>
+            <button onClick={clearError} className="p-1 hover:bg-white/20 rounded-lg transition-colors shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
       {/* ── Main Content ─────────────────────────────── */}
       <main className="flex-1 flex flex-row relative overflow-hidden bg-transparent">
         {/* Mobile Sidebar Backdrop */}
@@ -185,6 +214,7 @@ export default function WebsocketChat() {
             history={history}
             currentSessionId={null}
             onSelectSession={selectSession}
+            onDeleteSession={deleteSession}
             onNewChat={resetChat}
             isOpen={isSidebarOpen}
             onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -301,7 +331,7 @@ export default function WebsocketChat() {
                   )}
 
                   {/* Toggle workspace button — always available when connected */}
-                  {status !== "disconnected" && (
+                  {/* {status !== "disconnected" && (
                     <button
                       onClick={() => setIsCanvasOpen(!isCanvasOpen)}
                       className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1.5 border ${isCanvasOpen ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:text-slate-900 dark:hover:text-white"}`}
@@ -310,7 +340,7 @@ export default function WebsocketChat() {
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                       {isCanvasOpen ? "Hide" : "Canvas"}
                     </button>
-                  )}
+                  )} */}
 
                   {status !== "disconnected" && (
                     <button
@@ -386,6 +416,7 @@ export default function WebsocketChat() {
                   <Canvas
                     content={canvasContent}
                     isOpen={isCanvasOpen}
+                    onClear={() => setCanvasContent([])}
                     onClose={() => setIsCanvasOpen(false)}
                     isWriting={isCanvasWriting}
                     width={window.innerWidth < 768 ? window.innerWidth : canvasWidth}

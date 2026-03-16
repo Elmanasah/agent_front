@@ -77,8 +77,8 @@ export const AuthProvider = ({ children }) => {
       const data = await AuthService.register(userData);
       // On success, the cookie is set.
       if (data?.data?.user) {
-        const userData = data.data.user;
-        setUser(userData);
+        const newUser = data.data.user;
+        setUser(newUser);
       } else {
         await loadMe();
       }

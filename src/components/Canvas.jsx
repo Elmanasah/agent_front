@@ -2,20 +2,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import MafsRenderer from './MafsRenderer';
 import MermaidRenderer from './MermaidRenderer';
 
-export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
+export default function Canvas({ content, isOpen, onClose, onClear, isWriting, width }) {
     const scrollRef = useRef(null);
     const [isCopied, setIsCopied] = useState(false);
 
     const handleCopy = async () => {
         if (!content || !Array.isArray(content)) return;
-        
+
         try {
             // Aggregate text blocks specifically
             const textToCopy = content
                 .filter(b => b.type === 'text')
                 .map(b => b.value)
                 .join('\n\n');
-                
+
             if (textToCopy) {
                 await navigator.clipboard.writeText(textToCopy);
                 setIsCopied(true);
@@ -44,7 +44,7 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
     // sophisticated markdown-lite renderer
     const renderMarkdown = (text) => {
         if (!text) return null;
-        
+
         const lines = text.split('\n');
         return lines.map((line, i) => {
             // Headings
@@ -57,7 +57,7 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
             if (line.startsWith('### ')) {
                 return <h3 key={i} className="text-xl font-semibold text-slate-700 dark:text-slate-200 mt-8 mb-4 tracking-tight">{parseInline(line.slice(4))}</h3>;
             }
-            
+
             // Bullet Points
             if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
                 const content = line.trim().slice(2);
@@ -80,7 +80,7 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
     // Helper to parse bold/italic within a line
     const parseInline = (line) => {
         if (!line) return "";
-        
+
         // Match **bold**
         const parts = line.split(/(\*\*.*?\*\*)/g);
         return parts.map((part, i) => {
@@ -91,21 +91,40 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
         });
     };
 
+    // ── Helper Component: Artifact Card ────────────────
+    const ArtifactCard = ({ title, label, children }) => (
+        <div className="relative group/artifact animate-fade-in my-16">
+            <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 to-transparent rounded-[3rem] opacity-0 group-hover/artifact:opacity-100 transition-opacity duration-500 -z-10 blur-xl px-10" />
+            <div className="flex flex-col rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-[#111] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden transition-all hover:border-indigo-500/20">
+                <div className="flex items-center justify-between px-8 py-4 bg-slate-50/50 dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
+                    </div>
+                    {title && <span className="text-[11px] font-bold text-indigo-500/80">{title}</span>}
+                </div>
+                <div className="p-2">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+
     return (
-        <div 
+        <div
             className="flex flex-col h-full bg-white dark:bg-[#0D0D0D] md:border-l border-slate-200 dark:border-white/5 shadow-[-1px_0_10px_rgba(0,0,0,0.05)] dark:shadow-none z-[40] font-sans overflow-hidden relative transition-colors duration-300 w-full"
             style={{ width: window.innerWidth < 768 ? '100vw' : `${width}px` }}
         >
             {/* Subtle Gradient Glow */}
             <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
-            
+
             {/* Subtle Grid Pattern */}
             <div className="absolute inset-0 opacity-[0.015] dark:opacity-[0.015] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
 
             {/* ── Premium Header ─────────────────────────── */}
             <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/5 bg-white/60 dark:bg-[#0D0D0D]/60 backdrop-blur-2xl shrink-0 z-10 transition-all">
                 <div className="flex items-center gap-3">
-                    <button 
+                    <button
                         onClick={onClose}
                         className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all group active:scale-95"
                         title="Close Canvas"
@@ -118,13 +137,23 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
                             <span className="text-[10px] text-slate-300 dark:text-slate-800 font-bold">/</span>
                             <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tracking-tight">Artifact</span>
                         </div>
-                   </div>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    <button 
+                    {blocks.length > 0 && (
+                        <button
+                            onClick={onClear}
+                            className="p-2 mr-2 hover:bg-rose-500/10 text-slate-400 dark:text-slate-600 hover:text-rose-500 rounded-lg transition-all group"
+                            title="Clear Workspace"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                        </button>
+                    )}
+
+                    <button
                         onClick={handleCopy}
-                        className={`p-2 rounded-lg transition-all ${isCopied ? 'bg-emerald-500/10 text-emerald-500' : 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300'}`} 
+                        className={`p-2 rounded-lg transition-all ${isCopied ? 'bg-emerald-500/10 text-emerald-500' : 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300'}`}
                         title="Copy Content"
                     >
                         {isCopied ? (
@@ -140,7 +169,7 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
             </div>
 
             {/* ── Main Canvas Content Area ───────────────── */}
-            <div 
+            <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto px-10 py-20 CustomScrollbar bg-transparent selection:bg-indigo-500/30 relative"
             >
@@ -155,41 +184,47 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-16">
+                        <div className="space-y-4">
                             {blocks.map((block, idx) => (
-                                <div key={idx} className="animate-fade-in group">
+                                <React.Fragment key={idx}>
                                     {block.type === 'image' ? (
-                                        <div className="relative rounded-[2.5rem] overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.01] shadow-xl dark:shadow-2xl transition-all hover:border-indigo-500/30 group/img">
-                                             <img src={block.value} alt="AI Visualization" className="w-full object-contain" />
-                                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 dark:from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity"></div>
-                                        </div>
+                                        <ArtifactCard label="AI Visualization" title={block.title}>
+                                            <div className="relative overflow-hidden group/img">
+                                                <img src={block.value} alt="AI Visualization" className="w-full object-contain bg-slate-50 dark:bg-[#111]" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 dark:from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity"></div>
+                                            </div>
+                                        </ArtifactCard>
                                     ) : block.type === 'math' ? (
-                                        (() => {
-                                            try {
-                                                const config = typeof block.value === 'string' ? JSON.parse(block.value) : block.value;
-                                                return <MafsRenderer config={config} />;
-                                            } catch (e) {
-                                                return (
-                                                    <div className="p-6 rounded-3xl bg-rose-500/5 border border-rose-500/20 my-6">
-                                                        <div className="flex items-center gap-2 text-rose-500 font-bold text-xs uppercase tracking-widest mb-3">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                                                            Math Rendering Error
+                                        <ArtifactCard label="Interactive Plot" title={block.title}>
+                                            {(() => {
+                                                try {
+                                                    const config = typeof block.value === 'string' ? JSON.parse(block.value) : block.value;
+                                                    return <MafsRenderer config={config} />;
+                                                } catch (e) {
+                                                    return (
+                                                        <div className="p-6 bg-rose-500/5 border-t border-rose-500/10">
+                                                            <div className="flex items-center gap-2 text-rose-500 font-bold text-[10px] uppercase tracking-widest mb-3">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                                                                Math Rendering Error
+                                                            </div>
+                                                            <pre className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed bg-black/5 dark:bg-black/20 p-4 rounded-xl overflow-x-auto">
+                                                                {block.value}
+                                                            </pre>
                                                         </div>
-                                                        <pre className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed bg-black/5 dark:bg-black/20 p-4 rounded-xl">
-                                                            {block.value}
-                                                        </pre>
-                                                    </div>
-                                                );
-                                            }
-                                        })()
+                                                    );
+                                                }
+                                            })()}
+                                        </ArtifactCard>
                                     ) : block.type === 'mermaid' ? (
-                                        <MermaidRenderer chart={block.value} />
+                                        <ArtifactCard label="Logic Architecture" title={block.title}>
+                                            <MermaidRenderer chart={block.value} />
+                                        </ArtifactCard>
                                     ) : (
-                                        <div className="font-sans">
+                                        <div className="font-sans py-4">
                                             {renderMarkdown(block.value)}
                                         </div>
                                     )}
-                                </div>
+                                </React.Fragment>
                             ))}
                         </div>
                     )}
@@ -206,10 +241,6 @@ export default function Canvas({ content, isOpen, onClose, isWriting, width }) {
                     )}
                 </div>
             </div>
-
-            {/* Float FAB Cleanup */}
-            {/* The user manually commented out the FAB code, I should respect that change or clean it up if requested. 
-                I'll keep the user's manual comment-out for now as it's their preference. */}
         </div>
     );
 }
