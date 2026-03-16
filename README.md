@@ -77,30 +77,52 @@ npm run dev
 
 Follow these steps to start your learning journey with Horus:
 
-### 1. Connect to the Mentor
-- Navigate to the **Socket** page (Live Session).
+### 1. User Authentication
+- **Google OAuth**: Sign in instantly using your Google account for a seamless experience.
+- **Email & OTP**: Alternatively, register/login with your email address. Horus will send a **One-Time Password (OTP)** to your inbox to verify your identity.
+- **Persistence**: Authentication ensures your session history and knowledge base are securely saved across devices.
+
+### 2. Multimedia Support (Files & Images)
+- **Upload**: In the **Standard Chat** mode, use the attachment icon to upload PDFs, text files, or images (JPG/PNG).
+- **Processing**: Once uploaded, you can ask Horus to summarize documents, explain diagrams in images, or extract key data from your files.
+
+### 2. Choose Your Interaction Mode
+Horus supports two ways of communicating:
+- **Standard Chat (HTTP/SSE)**: Use the main chat interface for text-based questions and file attachments. This uses Server-Sent Events (SSE) for a smooth, streaming text experience.
+- **Live Mentor (WebSocket/Socket)**: Navigate to the **Socket** page for the "All-Seeing" mentor experience. This mode enables low-latency voice and vision.
+
+### 3. Start a Live Session (Socket Mode)
+- Navigate to the **Socket** page.
 - Click the **Connect** button in the top-right corner.
-- Once connected, you'll see a green "CONNECTED" status and the sidebar will populate with your session history.
+- Once connected, you'll see a green "CONNECTED" status.
 
-### 2. Live Interaction (Voice & Vision)
-- **Voice**: Click the **🎙️ Live** button to unmute your microphone. You can now speak naturally to Horus.
-- **Vision**: Use the **📷 Cam** or **🖥️ Screen** buttons to share your visual context. Horus can see your notebooks, PDFs, or IDE and provide real-time feedback.
-- **Audio Output**: Horus will respond with live voice output. Ensure your speakers are on!
+### 4. Live Interaction (Voice & Vision)
+- **Voice**: Click the **🎙️ Live** button to unmute your microphone.
+- **Vision**: Use the **📷 Cam** or **🖥️ Screen** buttons to share your visual context (e.g., your notebook or a PDF).
+- **Audio Output**: Horus will respond with real-time audio. Ensure your sound is enabled.
 
-### 3. Using the Interactive Canvas
-- Whenever Horus explains a complex concept, he will trigger the **Canvas Workspace**.
-- **Math Visualization**: Interactive graphs and plots will appear automatically when discussing functions or geometry.
-- **Diagrams**: Logic flows and architecture diagrams (via Mermaid) will render in the workspace.
-- **Image Generation**: If inspired, Horus can generate and display custom educational images.
-- **Markdown Notes**: Step-by-step explanations and quizzes are rendered as structured notes that you can copy or share.
+### 5. Using the Interactive Canvas
+- Whenever Horus explains a complex concept (in either mode), he will trigger the **Canvas Workspace**.
+- **Math Visualization**: Interactive graphs and plots via `Mafs`.
+- **Diagrams**: Logic flows and architecture via `Mermaid.js`.
+- **Image Generation**: Custom educational images generated via `Imagen 3`.
+- **Markdown Notes**: Step-by-step notes and quizzes.
 
-### 4. Knowledge Base & History
-- Use the **Sidebar** to jump between past learning sessions.
-- Open the **Knowledge Base** (KB) to upload and manage documents that Horus should use as context for your tutoring.
+### 6. Knowledge Base & History
+- Use the **Sidebar** to review past sessions.
+- Open the **Knowledge Base** (KB) to upload documents that Horus should reference during your study sessions.
 
-### 5. Personalization
-- Use the **Theme Toggle** in the sidebar to switch between Dark and Light modes.
-- Access **Settings** to update your profile and preferences.
+## 💡 Example Prompts
+
+Not sure what to ask? Try these prompts to see Horus in action:
+
+- **Mathematics**: "Look at this calculus problem in my notebook [shares camera]. Can you explain the steps to solve it and plot the derivative on the canvas?"
+- **Document Analysis**: [Uploads a PDF] "Can you summarize the key findings of this research paper and list the most important citations?"
+- **Visual Reasoning**: [Uploads an image] "Explain the circuit diagram in this photo and tell me if the connections look correct."
+- **Computer Science**: "Explain the difference between Microservices and Monolithic architectures. Please draw a comparison diagram on the canvas."
+- **Study Aid (RAG)**: "I've uploaded my lecture notes. Can you summarize the key concepts of Chapter 3 and create a 5-question quiz for me?"
+- **Visual Learning**: "I'm having trouble visualizing a black hole's event horizon. Can you generate an image to show its structure?"
+- **Collaborative Writing**: "Let's outline a research paper on AI Ethics. Use the canvas to keep a structured list of our main arguments."
 
 ## Horus Tech Stack: Detailed Architecture
 
