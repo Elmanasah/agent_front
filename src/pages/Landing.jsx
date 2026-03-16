@@ -69,19 +69,19 @@ export default function Landing() {
                         
                         <div className="relative w-[115%] md:w-full h-[120%] md:h-[110%] flex justify-center md:justify-end translate-x-[5%] md:-translate-x-20">
                             <img 
-                                src="/hero.png" 
+                                src="/hero.webp" 
                                 alt="Horus AI visualization" 
                                 className="w-full h-full object-contain object-center md:object-right drop-shadow-2xl relative z-10 pointer-events-auto scale-110 md:scale-100"
                             />
                             {/* Floating Symbols matching the references */}
                             <div className="absolute top-[18%] right-[22%] md:top-[25%] md:right-[24%] w-16 md:w-20 lg:w-[100px] z-20 pointer-events-none">
                                 <div className="hero-symbol-draggable symbol-delay-1 w-full h-full pointer-events-auto">
-                                    <img src="/egysymbol.png" alt="Egyptian Symbol" className="hero-symbol symbol-bob-delay-1 w-full h-full drop-shadow-[0_0_20px_rgba(251,191,36,0.4)]" />
+                                    <img src="/egysymbol.webp" alt="Egyptian Symbol" className="hero-symbol symbol-bob-delay-1 w-full h-full drop-shadow-[0_0_20px_rgba(251,191,36,0.4)]" />
                                 </div>
                             </div>
                             <div className="absolute bottom-[18%] right-[12%] md:bottom-[25%] md:right-[16%] w-18 md:w-24 lg:w-[120px] z-20 pointer-events-none">
                                 <div className="hero-symbol-draggable symbol-delay-2 w-full h-full pointer-events-auto">
-                                    <img src="/bug.png" alt="Scarab Symbol" className="hero-symbol symbol-bob-delay-2 w-full h-full drop-shadow-[0_0_20px_rgba(251,191,36,0.4)]" />
+                                    <img src="/bug.webp" alt="Scarab Symbol" className="hero-symbol symbol-bob-delay-2 w-full h-full drop-shadow-[0_0_20px_rgba(251,191,36,0.4)]" />
                                 </div>
                             </div>
 
