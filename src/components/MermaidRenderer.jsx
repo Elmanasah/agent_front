@@ -86,16 +86,7 @@ export default function MermaidRenderer({ chart }) {
   }, [chart]);
 
   if (error) {
-    return (
-      <div className="p-6 rounded-3xl bg-amber-500/5 border border-amber-500/20 my-6">
-        <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-widest mb-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-          Diagram Syntax Error
-        </div>
-        <pre className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed bg-black/5 dark:bg-black/20 p-4 rounded-xl">
-          {chart}
-        </pre>
-      </div>
+    return null;
     );
   }
 
