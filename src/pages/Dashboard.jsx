@@ -364,6 +364,7 @@ export default function Dashboard() {
                                         <Canvas
                                             content={canvasContent}
                                             isOpen={isCanvasOpen}
+                                            onClear={() => setCanvasContent([])}
                                             onClose={() => setIsCanvasOpen(false)}
                                             isWriting={isCanvasWriting}
                                             width={window.innerWidth < 768 ? window.innerWidth : canvasWidth}
