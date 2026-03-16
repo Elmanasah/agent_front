@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Outlet } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
@@ -6,17 +6,25 @@ import Dashboard from '../pages/Dashboard';
 import WebsocketChat from '../components/WebsocketChat';
 import Landing from '../pages/Landing';
 import Settings from '../pages/Settings';
+import { ThemeProvider } from '../context/ThemeContext';
+
+const ThemeLayout = () => (
+    <ThemeProvider>
+        <Outlet />
+    </ThemeProvider>
+);
 
 export default function AppRoutes() {
     return (
         <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            {/* Theme Protected Public Routes */}
+            <Route element={<ThemeLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/" element={<Landing />} />
+            </Route>
 
-            <Route path="/" element={<Landing />} />
-
-            {/* Protected Routes */}
+            {/* Protected Routes (No ThemeProvider) */}
             <Route
                 path="/dashboard"
                 element={

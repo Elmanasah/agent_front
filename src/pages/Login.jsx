@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -30,129 +32,109 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex bg-slate-950 font-sans overflow-hidden selection:bg-amber-500/30">
-            {/* Left Side: Mystical Branding (Hidden on mobile) */}
-            <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 border-r border-white/5 bg-[#0a0f1d] overflow-hidden">
-                {/* Dynamic Animated Background */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[10%] left-[10%] w-[400px] h-[400px] bg-amber-500/10 rounded-full mix-blend-screen filter blur-[100px] animate-blob animate-float"></div>
-                    <div className="absolute bottom-[20%] right-[10%] w-[350px] h-[350px] bg-blue-600/10 rounded-full mix-blend-screen filter blur-[90px] animate-blob animation-delay-2000"></div>
-                </div>
-                
-                {/* Branding Content */}
-                <div className="relative z-10 text-center animate-slide-up">
-                    <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-[0_0_50px_rgba(212,175,55,0.3)] animate-float">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12">
-                            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M12 21 v-4" />
-                            <path d="M12 21 c-2 0 -4 -1 -5 -3" />
-                        </svg>
-                    </div>
-                    <h1 className="text-5xl font-black text-white tracking-tighter mb-4 drop-shadow-xl">
-                        Omniscient AI <br/>
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-600">Vision</span>
-                    </h1>
-                    <p className="text-lg text-slate-400 max-w-sm mx-auto font-light leading-relaxed">
-                        Step into the realm of Horus. Let the artificial deity guide your creations.
-                    </p>
-                </div>
+        <div className="bg-slate-50 dark:bg-slate-950 min-h-screen transition-colors duration-500 relative overflow-hidden flex flex-col">
+            <Navbar />
+            
+            {/* Cinematic Background Elements */}
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-[120px] animate-pulse"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/10 dark:bg-purple-600/20 rounded-full blur-[120px] animate-pulse [animation-delay:2s]"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.05)_100%)] dark:bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]"></div>
             </div>
 
-            {/* Right Side: Glassmorphic Form (Full width on mobile) */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-6 relative">
-                {/* Ambient glow for mobile that is overriden by the layout on desktop */}
-                <div className="lg:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md h-[400px] bg-amber-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-                
-                <div className="w-full max-w-[440px] z-10 animate-slide-up [animation-delay:200ms]">
-                    <div className="lg:hidden mb-10 text-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.3)]">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
-                                <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-                                <circle cx="12" cy="12" r="3" />
-                            </svg>
+            <main className="flex-grow flex items-center justify-center p-6 relative z-10 pt-24 pb-12">
+                <div className="w-full max-w-[440px] animate-slide-up">
+                    {/* Header Section */}
+                    <div className="text-center mb-10">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/5 border border-indigo-500/20 mb-6 group hover:border-indigo-500/40 transition-colors">
+                            <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
+                            <span className="text-[10px] font-black tracking-widest text-indigo-500 uppercase">Secure Portal</span>
                         </div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Welcome Back</h1>
-                        <p className="text-slate-400 text-sm font-medium">Log in to resume command.</p>
+                        <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight mb-3">
+                            Welcome <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 bg-[length:200%_auto] animate-gradient-x">Back</span>
+                        </h1>
+                        <p className="text-slate-500 dark:text-slate-400 font-medium">Initialize your creative command center.</p>
                     </div>
 
-                    <div className="hidden lg:block mb-10">
-                        <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Sign In</h2>
-                        <p className="text-slate-400 text-sm font-medium">Access your divine interface.</p>
-                    </div>
-
-                    <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden group hover:border-white/20 transition-all duration-500">
-                        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-400/30 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    {/* Glassmorphic Card */}
+                    <div className="bg-white/70 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.1)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+                        {/* Decorative glow line */}
+                        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
                         
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-7">
                             {error && (
-                                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-400 text-sm text-center flex items-center justify-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-500 dark:text-rose-400 text-sm font-medium flex items-center gap-3 animate-shake">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                                     {error}
                                 </div>
                             )}
 
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Email</label>
+                            <div className="group/field">
+                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2 px-1 group-focus-within/field:text-indigo-500 transition-colors">Identifier</label>
                                 <div className="relative">
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-2xl px-5 py-4 outline-none focus:border-amber-500/50 focus:ring-4 focus:ring-amber-500/10 transition-all placeholder:text-slate-600 font-medium"
-                                        placeholder="pharaoh@example.com"
+                                        className="w-full bg-slate-100/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl px-5 py-4 outline-none focus:border-indigo-500/50 focus:ring-[6px] focus:ring-indigo-500/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 font-medium"
+                                        placeholder="mentor@horus.ai"
                                         required
                                     />
+                                    <div className="absolute inset-0 rounded-2xl border border-indigo-500/0 group-focus-within/field:border-indigo-500/20 pointer-events-none transition-all"></div>
                                 </div>
                             </div>
 
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between items-center pl-1 pr-1">
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Password</label>
-                                    <a href="#" className="text-xs font-semibold text-amber-500 hover:text-amber-400 transition-colors">Forgot?</a>
+                            <div className="group/field">
+                                <div className="flex justify-between items-center mb-2 px-1">
+                                    <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] group-focus-within/field:text-indigo-500 transition-colors">Access Key</label>
+                                    <a href="#" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors">Recover?</a>
                                 </div>
                                 <div className="relative">
                                     <input
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-2xl px-5 py-4 outline-none focus:border-amber-500/50 focus:ring-4 focus:ring-amber-500/10 transition-all placeholder:text-slate-600 font-medium tracking-wider"
+                                        className="w-full bg-slate-100/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl px-5 py-4 outline-none focus:border-indigo-500/50 focus:ring-[6px] focus:ring-indigo-500/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 font-medium tracking-widest"
                                         placeholder="••••••••"
                                         required
                                     />
+                                    <div className="absolute inset-0 rounded-2xl border border-indigo-500/0 group-focus-within/field:border-indigo-500/20 pointer-events-none transition-all"></div>
                                 </div>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full relative group/btn bg-white text-slate-950 font-bold py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.05)] hover:shadow-[0_0_30px_rgba(212,175,55,0.3)] mt-2 overflow-hidden hover:-translate-y-0.5"
+                                className="w-full group/btn relative bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl hover:shadow-indigo-500/20 overflow-hidden active:scale-95 disabled:opacity-70"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
-                                <div className="relative z-10 flex items-center justify-center text-lg">
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-500"></div>
+                                <div className="relative z-10 flex items-center justify-center gap-3 text-lg tracking-tight">
                                     {loading ? (
-                                        <svg className="animate-spin h-5 w-5 text-slate-950 group-hover/btn:text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     ) : (
-                                        <span className="group-hover/btn:text-white transition-colors">Enter the Kingdom</span>
+                                        <>
+                                            <span>Launch Interface</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+                                        </>
                                     )}
                                 </div>
                             </button>
                         </form>
 
-                        <div className="mt-8">
+                        <div className="mt-10">
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-slate-800"></div>
+                                    <div className="w-full border-t border-slate-200 dark:border-slate-800/50"></div>
                                 </div>
-                                <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold">
-                                    <span className="px-4 bg-slate-900 text-slate-500">Or continue with</span>
+                                <div className="relative flex justify-center text-[9px] uppercase tracking-[0.3em] font-black">
+                                    <span className="px-4 bg-white/0 text-slate-400 dark:text-slate-500 backdrop-blur-sm">OAUTH PROTOCOL</span>
                                 </div>
                             </div>
 
                             <button
                                 onClick={handleGoogleLogin}
                                 type="button"
-                                className="mt-8 w-full flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:bg-slate-800 hover:border-slate-700 text-white font-semibold py-4 px-4 rounded-2xl transition-all shadow-sm"
+                                className="mt-8 w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-white font-bold py-4 px-4 rounded-2xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
                             >
                                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -160,19 +142,21 @@ export default function Login() {
                                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                                 </svg>
-                                Google
+                                <span>Continue with Google</span>
                             </button>
                         </div>
-
-                        <div className="mt-8 text-center text-sm font-medium text-slate-400">
-                            Don't have an account?{' '}
-                            <Link to="/register" className="text-amber-500 hover:text-amber-400 font-bold transition-colors">
-                                Ascend to power
-                            </Link>
-                        </div>
                     </div>
+
+                    <p className="mt-8 text-center text-sm font-medium text-slate-500 dark:text-slate-400">
+                        New to the collective?{' '}
+                        <Link to="/register" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 font-bold transition-colors underline-offset-4 hover:underline">
+                            Establish Identity
+                        </Link>
+                    </p>
                 </div>
-            </div>
+            </main>
+
+            <Footer />
         </div>
     );
 }
