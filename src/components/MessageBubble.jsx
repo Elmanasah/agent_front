@@ -4,7 +4,7 @@ const MessageBubble = ({ role, text, attachments = [] }) => {
     const isUser = role === 'user';
 
     return (
-        <div className={`flex items-start gap-4 mb-6 ${isUser ? 'flex-row-reverse animate-fade-in' : 'flex-row animate-fade-in'}`}>
+        <div className={`flex items-start gap-4 mb-6 ${isUser ? 'flex-row-reverse ' : 'flex-row '}`}>
             {/* Avatar */}
             <div className={`w-9 h-9 rounded-2xl flex items-center justify-center text-[10px] font-black tracking-tighter shrink-0 shadow-lg ${
                 isUser 

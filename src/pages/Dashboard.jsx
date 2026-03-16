@@ -74,6 +74,9 @@ export default function Dashboard() {
                     const last = updated[msgIndex];
                     if (last && last.role === 'agent') {
                         updated[msgIndex] = { ...last, text: last.text + event.text };
+                    } else {
+                        // Create the message if it doesn't exist
+                        updated[msgIndex] = { role: 'agent', text: event.text };
                     }
                     return updated;
                 });
@@ -133,12 +136,10 @@ export default function Dashboard() {
         const controller = new AbortController();
         abortRef.current = controller;
 
-        // Push user message and an empty agent placeholder
-        const agentMsgIndex = messages.length + 1;
+        // Push user message
         setMessages(prev => [
             ...prev,
             { role: 'user', text, attachments },
-            { role: 'agent', text: '' },
         ]);
         setLoading(true);
         setError(null);
@@ -150,7 +151,7 @@ export default function Dashboard() {
                 attachments: attachments.map(a => ({ data: a.data, mimeType: a.mimeType })),
                 sessionId: currentSessionId,
                 signal: controller.signal,
-                onEvent: (event) => handleSseEvent(event, agentMsgIndex),
+                onEvent: (event) => handleSseEvent(event, messages.length + 1),
             });
         } catch (err) {
             if (err.name !== 'AbortError') {
@@ -335,12 +336,7 @@ export default function Dashboard() {
                                         </div>
                                     ) : (
                                         <div className="max-w-3xl mx-auto">
-                                            <ChatWindow messages={messages} />
-                                            {loading && !activeTool && (
-                                                <div className="flex items-center gap-2 p-4 animate-pulse text-slate-400 dark:text-slate-500 text-[12px] italic">
-                                                    Horus is thinking...
-                                                </div>
-                                            )}
+                                            <ChatWindow messages={messages} loading={loading && !activeTool} />
                                         </div>
                                     )}
                                 </div>
