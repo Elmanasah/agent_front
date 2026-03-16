@@ -9,7 +9,8 @@ export class GeminiLiveAPI {
   constructor({ projectId, location, model, apiHost }) {
     this.projectId = projectId;
     this.location = location;
-    this.model = model ?? "gemini-live-2.5-flash-native-audio";
+    // this.model = model ?? "gemini-live-2.5-flash-native-audio";
+    this.model = model ?? "gemini-2.0-flash-live-001";
     this.apiHost = apiHost ?? "us-central1-aiplatform.googleapis.com";
 
     // For Vertex AI LlmBidiService
@@ -24,6 +25,7 @@ export class GeminiLiveAPI {
 
     this.onReceiveResponse = () => { };
     this.onConnectionStarted = () => { };
+    this.onToolResult = () => {};
     this.onError = (msg) => console.error("[GeminiLiveAPI]", msg);
     this.onDisconnected = () => { };
   }
@@ -68,24 +70,141 @@ export class GeminiLiveAPI {
     }
   }
 
-  _sendSetup() {
-    // Vertex AI requires projects/{project}/locations/{location}/publishers/google/models/{model}
-    const modelUri = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.model}`;
-    console.log("[GeminiLiveAPI] Sending setup for model:", modelUri);
+  // _sendSetup() {
+  //   // Vertex AI requires projects/{project}/locations/{location}/publishers/google/models/{model}
+  //   const modelUri = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.model}`;
+  //   console.log("[GeminiLiveAPI] Sending setup for model:", modelUri);
+  //
+  //   this._send({
+  //     setup: {
+  //       model: modelUri,
+  //       generation_config: {
+  //         response_modalities: ["AUDIO"],
+  //       },
+  //       output_audio_transcription: {},
+  //       system_instruction: {
+  //         parts: [{ text: this.systemInstructions }],
+  //       },
+  //     },
+  //   });
+  // }
 
-    this._send({
-      setup: {
-        model: modelUri,
-        generation_config: {
-          response_modalities: ["AUDIO"],
+  // NEW _sendSetup() in GeminiLiveAPI.js
+_sendSetup() {
+  const modelUri = `projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.model}`;
+
+  const TOOL_DECLARATIONS = [
+    {
+      name: "search_knowledge_base",
+      description:
+        "Search the user's uploaded documents using semantic similarity. " +
+        "Use this whenever the user asks a question that might be answered by their files.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "The search query." },
         },
-        output_audio_transcription: {},
-        system_instruction: {
-          parts: [{ text: this.systemInstructions }],
-        },
+        required: ["query"],
       },
-    });
+    },
+    {
+      name: "search_sessions",
+      description:
+        "Search the user's past conversation history for relevant information.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Keywords or phrase to search." },
+        },
+        required: ["query"],
+      },
+    },
+    {
+      name: "generate_image",
+      description:
+        "Generate an image from a text prompt using Imagen 3. " +
+        "Use this when the user explicitly asks for an image, illustration, or visual.",
+      parameters: {
+        type: "object",
+        properties: {
+          prompt: { type: "string", description: "Detailed text prompt for image generation." },
+        },
+        required: ["prompt"],
+      },
+    },
+    {
+      name: "render_canvas",
+      description:
+        "Send a rich markdown document to the user's Canvas workspace panel. " +
+        "Use this for all detailed explanations, code, step-by-step guides, and long content.",
+      parameters: {
+        type: "object",
+        properties: {
+          markdown: { type: "string", description: "Full markdown content to display." },
+          title: { type: "string", description: "A short title for this canvas block." },
+        },
+        required: ["markdown"],
+      },
+    },
+    {
+      name: "render_diagram",
+      description:
+        "Render a Mermaid diagram in the user's Canvas workspace. " +
+        "Use for flowcharts, sequence diagrams, architecture diagrams.",
+      parameters: {
+        type: "object",
+        properties: {
+          mermaid_syntax: { type: "string", description: "Valid Mermaid syntax starting with graph TD or LR." },
+          title: { type: "string", description: "Short label for this diagram." },
+        },
+        required: ["mermaid_syntax"],
+      },
+    },
+    {
+      name: "render_math",
+      description:
+        "Render an interactive mathematical plot in the user's Canvas workspace.",
+      parameters: {
+        type: "object",
+        properties: {
+          json: {
+            type: "string",
+            description:
+              'JSON string: {"elements":[{"type":"plot-of-x","fn":"Math.sin(x)","color":"blue"}]}',
+          },
+          title: { type: "string", description: "Short label for this plot." },
+        },
+        required: ["json"],
+      },
+    },
+  ];
+
+  this._send({
+    setup: {
+      model: modelUri,
+      // generation_config: { response_modalities: ["AUDIO"] },
+      // output_audio_transcription: {},
+      // system_instruction: {
+      //   parts: [{ text: this.systemInstructions }],
+      // },
+
+      generation_config: {
+  response_modalities: ["AUDIO"],
+  speech_config: {
+    voice_config: {
+      prebuilt_voice_config: { voice_name: "Aoede" }
+    }
   }
+},
+      tools: [{ function_declarations: TOOL_DECLARATIONS }], // ✅ ADD THIS
+      tool_config: {                          // ✅ ADD THIS
+      function_calling_config: {
+        mode: "AUTO",                       // forces the model to actually call tools
+      },
+    },
+    },
+  });
+}
 
   _handleMessage(evt) {
     try {
@@ -104,6 +223,13 @@ export class GeminiLiveAPI {
         this.onConnectionStarted();
         return;
       }
+
+      if (data.tool_result) {
+        console.log("[GeminiLiveAPI] tool_result received:", data.tool_result); // debug
+        this.onToolResult(data.tool_result);
+        return;
+      }
+
 
       // Handle standard model turns (AI Studio uses snake_case in responses too)
       const parts = data?.serverContent?.modelTurn?.parts ?? [];

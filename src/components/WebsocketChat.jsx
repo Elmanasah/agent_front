@@ -21,13 +21,15 @@ export default function WebsocketChat() {
   );
   const [isKBOpen, setIsKBOpen] = useState(false);
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
-  const [canvasContent, setCanvasContent] = useState("");
+  // const [canvasContent, setCanvasContent] = useState("");
+  const [canvasContent, setCanvasContent] = useState([]);
   const [isCanvasWriting, setIsCanvasWriting] = useState(false);
   const [showVision, setShowVision] = useState(false);
   const [selectedCamera, setSelectedCamera] = useState("");
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  // const onToolResultRef = useRef(null);
 
   const {
     status,
@@ -42,6 +44,7 @@ export default function WebsocketChat() {
     stopCamera,
     startScreen,
     stopScreen,
+    setToolResultHandler,
   } = useGemini();
 
   const { cameras } = useDevices();
@@ -78,19 +81,87 @@ export default function WebsocketChat() {
   };
 
   // Sync canvas content from messages (simplified for this refactor)
+  // useEffect(() => {
+  //   const lastMessage = messages[messages.length - 1];
+  //   if (
+  //     lastMessage?.role === "assistant" &&
+  //     lastMessage.text.includes("```canvas")
+  //   ) {
+  //     setIsCanvasOpen(true);
+  //     const match = lastMessage.text.match(/```canvas([\s\S]*?)```/);
+  //     if (match) {
+  //       setCanvasContent(match[1].trim());
+  //     }
+  //   }
+  // }, [messages]);
+
+  // const { status, messages, error, ..., setToolResultHandler } = useGemini();
+
+  // Register handler once on mount
+  // useEffect(() => {
+  //   setToolResultHandler((toolResult) => {
+  //     if (toolResult.canvas) {
+  //       setCanvasContent(prev => Array.isArray(prev)
+  //         ? [...prev, { type: 'text', value: toolResult.canvas.markdown }]
+  //         : [{ type: 'text', value: toolResult.canvas.markdown }]
+  //       );
+  //       setIsCanvasOpen(true);
+  //     }
+  //     if (toolResult.diagram) {
+  //       setCanvasContent(prev => Array.isArray(prev)
+  //         ? [...prev, { type: 'diagram', value: toolResult.diagram.syntax }]
+  //         : [{ type: 'diagram', value: toolResult.diagram.syntax }]
+  //       );
+  //       setIsCanvasOpen(true);
+  //     }
+  //     if (toolResult.math) {
+  //       setCanvasContent(prev => Array.isArray(prev)
+  //         ? [...prev, { type: 'math', value: toolResult.math.json }]
+  //         : [{ type: 'math', value: toolResult.math.json }]
+  //       );
+  //       setIsCanvasOpen(true);
+  //     }
+  //     if (toolResult.image) {
+  //       // Add image URL as a message bubble (same as normal agent behavior)
+  //       // addMessage('assistant', `![Generated Image](${toolResult.image.url})`);
+  //     }
+  //   });
+  // }, [setToolResultHandler]);
+
   useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (
-      lastMessage?.role === "assistant" &&
-      lastMessage.text.includes("```canvas")
-    ) {
+  setToolResultHandler((toolResult) => {
+    console.log("[WebsocketChat] tool_result received:", toolResult); // debug
+
+    if (toolResult.canvas) {
+      setCanvasContent(prev => [
+        ...(Array.isArray(prev) ? prev : []),
+        { type: 'text', value: toolResult.canvas.markdown }
+      ]);
       setIsCanvasOpen(true);
-      const match = lastMessage.text.match(/```canvas([\s\S]*?)```/);
-      if (match) {
-        setCanvasContent(match[1].trim());
-      }
     }
-  }, [messages]);
+    if (toolResult.diagram) {
+      setCanvasContent(prev => [
+        ...(Array.isArray(prev) ? prev : []),
+        { type: 'diagram', value: toolResult.diagram.syntax }
+      ]);
+      setIsCanvasOpen(true);
+    }
+    if (toolResult.math) {
+      setCanvasContent(prev => [
+        ...(Array.isArray(prev) ? prev : []),
+        { type: 'math', value: toolResult.math.json }
+      ]);
+      setIsCanvasOpen(true);
+    }
+    if (toolResult.image) {
+      setCanvasContent(prev => [
+        ...(Array.isArray(prev) ? prev : []),
+        { type: 'image', value: toolResult.image.url }
+      ]);
+      setIsCanvasOpen(true);
+    }
+  });
+}, [setToolResultHandler]);
 
   const handleConnect = async () => {
     try {
@@ -119,6 +190,18 @@ export default function WebsocketChat() {
       console.error("Failed to connect to Vertex AI:", err);
     }
   };
+//--------------------------------------------
+  useEffect(() => {
+  setToolResultHandler((toolResult) => {
+    console.log('[WebsocketChat] tool_result handler fired:', toolResult); // ← ADD
+    if (toolResult.canvas) {
+      console.log('[WebsocketChat] Opening canvas with:', toolResult.canvas.title); // ← ADD
+      setCanvasContent(prev => [...(Array.isArray(prev) ? prev : []), { type: 'text', value: toolResult.canvas.markdown }]);
+      setIsCanvasOpen(true);
+    }
+    // ...
+  });
+}, [setToolResultHandler]);
 
   return (
     <div className="flex flex-col h-screen bg-transparent text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 selection:text-current overflow-hidden">

@@ -22,6 +22,7 @@ export function useGemini() {
   const audioInRef = useRef(new AudioInputManager());
   const videoRef = useRef(null);
   const screenRef = useRef(null);
+  const onToolResultRef = useRef(null);
 
   const addMessage = useCallback((role, text) => {
     setMessages((prev) => {
@@ -79,6 +80,10 @@ export function useGemini() {
         setError(msg);
         setStatus("disconnected");
         _stopAll();
+      };
+
+      api.onToolResult = (toolResult) => {
+        if (onToolResultRef.current) onToolResultRef.current(toolResult);
       };
 
       geminiRef.current = api;
@@ -194,5 +199,7 @@ export function useGemini() {
     startScreen,
     stopScreen,
     clearError: () => setError(null),
+      // clearError: () => setError(null),
+    setToolResultHandler: (fn) => { onToolResultRef.current = fn; }, // ✅ ADD THIS
   };
 }
