@@ -5,7 +5,6 @@ import { useTheme } from '../context/ThemeContext';
 export default function Navbar() {
     const { theme, toggleTheme } = useTheme();
     const [scrolled, setScrolled] = useState(false);
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const location = useLocation();
     const isLanding = location.pathname === '/';
 
@@ -16,35 +15,6 @@ export default function Navbar() {
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
-
-    const navItems = ['Home', 'Features', 'About'];
-
-    const handleNavClick = (e, item) => {
-        if (item === 'Home' && isLanding) {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setMobileMenuOpen(false);
-            return;
-        }
-
-        if (isLanding && item !== 'Home') {
-            e.preventDefault();
-            const el = document.querySelector(`#${item.toLowerCase()}`);
-            if (el) {
-                const offset = 80;
-                const bodyRect = document.body.getBoundingClientRect().top;
-                const elementRect = el.getBoundingClientRect().top;
-                const elementPosition = elementRect - bodyRect;
-                const offsetPosition = elementPosition - offset;
-                
-                window.scrollTo({
-                    top: offsetPosition,
-                    behavior: 'smooth'
-                });
-            }
-            setMobileMenuOpen(false);
-        }
-    };
 
     return (
         <nav className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${
@@ -72,50 +42,13 @@ export default function Navbar() {
                         )}
                     </button>
                     
-                    <Link to="/login" className="hidden sm:block px-7 py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full font-bold text-sm transition-all hover:scale-105 active:scale-95 shadow-xl shadow-indigo-500/10 dark:shadow-none">
+                    <Link to="/login" className="px-4 sm:px-7 py-2 sm:py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full font-bold text-[10px] sm:text-sm transition-all hover:scale-105 active:scale-95 shadow-xl shadow-indigo-500/10 dark:shadow-none">
                         Command Center
                     </Link>
-
-                    {/* Mobile Menu Button */}
-                    <button 
-                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="md:hidden p-2 text-slate-900 dark:text-white transition-opacity active:opacity-60 relative z-[70]"
-                        aria-label="Toggle Mobile Menu"
-                    >
-                        <div className="w-6 h-5 flex flex-col justify-between items-end">
-                            <span className={`h-0.5 bg-current transition-all duration-300 ${mobileMenuOpen ? 'w-6 translate-y-[9px] -rotate-45' : 'w-6'}`}></span>
-                            <span className={`h-0.5 bg-current transition-all duration-300 ${mobileMenuOpen ? 'opacity-0 scale-0' : 'w-4'}`}></span>
-                            <span className={`h-0.5 bg-current transition-all duration-300 ${mobileMenuOpen ? 'w-6 -translate-y-[9px] rotate-45' : 'w-5'}`}></span>
-                        </div>
-                    </button>
                 </div>
             </div>
 
-            {/* Mobile Menu Overlay */}
-            <div className={`fixed inset-0 bg-white dark:bg-[#050505] z-[60] flex flex-col items-center justify-center gap-10 transition-all duration-500 md:hidden ${mobileMenuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}`}>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.05)_0%,transparent_70%)] pointer-events-none"></div>
-                
-                <div className="flex flex-col items-center gap-8 relative z-10">
-                    {navItems.map((item) => (
-                        <Link 
-                            key={item}
-                            to={item === 'Home' ? '/' : `/#${item.toLowerCase()}`}
-                            className="mobile-link text-5xl font-black tracking-tighter text-slate-900 dark:text-white hover:text-indigo-500 transition-colors"
-                            onClick={(e) => handleNavClick(e, item)}
-                        >
-                            {item}
-                        </Link>
-                    ))}
-                </div>
-                
-                <Link 
-                    to="/login" 
-                    className="mobile-link relative z-10 px-12 py-5 bg-indigo-500 text-white rounded-2xl font-black text-xl shadow-2xl shadow-indigo-500/40 active:scale-95 transition-all"
-                    onClick={() => setMobileMenuOpen(false)}
-                >
-                    Command Center
-                </Link>
-            </div>
+
         </nav>
     );
 }
