@@ -25,16 +25,17 @@ export function useGemini() {
   const screenRef = useRef(null);
   const micMutedRef = useRef(false);
 
-  const addMessage = useCallback((role, text) => {
+  const addMessage = useCallback((role, text, attachments = []) => {
     setMessages((prev) => {
       const last = prev[prev.length - 1];
-      if (role === 'assistant' && last?.role === 'assistant') {
+      // Only append to last message if both are assistant text-only messages
+      if (role === 'assistant' && last?.role === 'assistant' && !attachments.length && (!last.attachments || !last.attachments.length)) {
         // If last message doesn't end with sentence punctuation, append to it
         if (!/[.!?]$/.test(last.text.trim())) {
           return [...prev.slice(0, -1), { ...last, text: last.text + text }];
         }
       }
-      return [...prev, { role, text, id: Date.now() + Math.random() }];
+      return [...prev, { role, text, attachments, id: Date.now() + Math.random() }];
     });
   }, []);
 
@@ -211,11 +212,7 @@ export function useGemini() {
     connect,
     disconnect,
     toggleMic,
-    sendText,
-    startCamera,
-    stopCamera,
-    startScreen,
-    stopScreen,
+    addMessage,
     clearError,
     toolResults,
     clearToolResults,

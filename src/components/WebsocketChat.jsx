@@ -11,6 +11,7 @@ import SessionService from "../api/session-services";
 import TokenService from "../api/token-services";
 import ImageService from "../api/image-services";
 import { useTheme } from "../context/ThemeContext";
+import ImageModal from "./ImageModal";
 
 export default function WebsocketChat() {
   const navigate = useNavigate();
@@ -25,6 +26,9 @@ export default function WebsocketChat() {
   const [isResizing, setIsResizing] = useState(false);
   const [showVision, setShowVision] = useState(false);
   const [selectedCamera, setSelectedCamera] = useState("");
+
+  // Image Modal
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -116,6 +120,9 @@ export default function WebsocketChat() {
     if (!toolResults || toolResults.length === 0) return;
 
     for (const result of toolResults) {
+      if (result.image) {
+        addMessage("assistant", "", [{ url: result.image.url, title: result.image.prompt }]);
+      }
       if (result.canvas) {
         setIsCanvasOpen(true);
         setCanvasContent(prev => [...prev, { type: 'text', value: result.canvas.markdown, title: result.canvas.title }]);
@@ -128,17 +135,13 @@ export default function WebsocketChat() {
         setIsCanvasOpen(true);
         setCanvasContent(prev => [...prev, { type: 'math', value: result.math.json, title: result.math.title }]);
       }
-      if (result.image) {
-        setIsCanvasOpen(true);
-        setCanvasContent(prev => [...prev, { type: 'image', value: result.image.url, title: result.image.prompt }]);
-      }
       if (result.quiz) {
         setIsCanvasOpen(true);
         setCanvasContent(prev => [...prev, { type: 'quiz', value: result.quiz.json, title: result.quiz.title }]);
       }
     }
     clearToolResults();
-  }, [toolResults, clearToolResults]);
+  }, [toolResults, clearToolResults, addMessage]);
 
   const handleConnect = async () => {
     try {
@@ -380,6 +383,7 @@ export default function WebsocketChat() {
                 <ChatWindow
                   messages={messages}
                   loading={status === "connecting"}
+                  onImageClick={(src, alt) => setSelectedImage({ src, alt })}
                 />
               </div>
 
@@ -431,6 +435,12 @@ export default function WebsocketChat() {
         </div>
       </main>
       <KnowledgeBase isOpen={isKBOpen} onClose={() => setIsKBOpen(false)} />
+      <ImageModal 
+        isOpen={!!selectedImage} 
+        onClose={() => setSelectedImage(null)} 
+        src={selectedImage?.src} 
+        alt={selectedImage?.alt} 
+      />
     </div>
   );
 }
