@@ -1,16 +1,28 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Mafs, Coordinates, Plot, Point, Vector, Circle, Text, Theme } from 'mafs';
 
 // Import styles
 import "mafs/core.css";
 import "mafs/font.css";
 
-export default function MafsRenderer({ config }) {
-    // Sanitize and parse functions safely-ish for a math demo
-    // In a production app, we'd use a math parser like mathjs
+// Read window size once via a small hook to avoid layout reads in render
+function useWindowWidth() {
+    const [width, setWidth] = useState(() => window.innerWidth);
+    useEffect(() => {
+        const handler = () => setWidth(window.innerWidth);
+        window.addEventListener('resize', handler, { passive: true });
+        return () => window.removeEventListener('resize', handler);
+    }, []);
+    return width;
+}
+
+export default React.memo(function MafsRenderer({ config }) {
+    const windowWidth = useWindowWidth();
+    const graphHeight = windowWidth < 768 ? 300 : 400;
+
     const elements = useMemo(() => {
         if (!config || !config.elements) return [];
-        
+
         return config.elements.map((el, i) => {
             try {
                 switch (el.type) {
@@ -44,14 +56,14 @@ export default function MafsRenderer({ config }) {
             <div className="absolute top-4 left-6 z-10">
                 <span className="text-[10px] font-black text-indigo-500/40 tracking-[0.3em] uppercase">Interactive Graph</span>
             </div>
-            
+
             <Mafs
                 viewBox={config.viewBox || { x: [-10, 10], y: [-10, 10] }}
-                height={window.innerWidth < 768 ? 300 : 400}
+                height={graphHeight}
                 zoom={{ min: 0.1, max: 10 }}
                 pan={true}
             >
-                <Coordinates.Cartesian 
+                <Coordinates.Cartesian
                     subdivisions={config.subdivisions || 2}
                     xAxis={{ lines: config.xAxisLines || 1 }}
                     yAxis={{ lines: config.yAxisLines || 1 }}
@@ -60,4 +72,4 @@ export default function MafsRenderer({ config }) {
             </Mafs>
         </div>
     );
-}
+});

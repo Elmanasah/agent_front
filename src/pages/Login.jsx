@@ -23,7 +23,7 @@ export default function Login() {
         setLoading(true);
         try {
             await login({ email, password });
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             setError(err.message);
         } finally {
@@ -80,7 +80,7 @@ export default function Login() {
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center px-1">
                                     <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Password</label>
-                                    <a href="#" className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Forgot?</a>
+                                    <Link to="/forgot-password" className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Forgot?</Link>
                                 </div>
                                 <input
                                     type="password"

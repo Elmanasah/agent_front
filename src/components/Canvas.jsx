@@ -1,98 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MafsRenderer from './MafsRenderer';
 import MermaidRenderer from './MermaidRenderer';
+import QuizRenderer from './QuizRenderer';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { ErrorBoundary } from './ErrorBoundary';
 
-export default function Canvas({ content, isOpen, onClose, onClear, isWriting, width }) {
-    const scrollRef = useRef(null);
-    const [isCopied, setIsCopied] = useState(false);
-
-    const handleCopy = async () => {
-        if (!content || !Array.isArray(content)) return;
-
-        try {
-            // Aggregate text blocks specifically
-            const textToCopy = content
-                .filter(b => b.type === 'text')
-                .map(b => b.value)
-                .join('\n\n');
-
-            if (textToCopy) {
-                await navigator.clipboard.writeText(textToCopy);
-                setIsCopied(true);
-                setTimeout(() => setIsCopied(false), 2000);
-            }
-        } catch (err) {
-            console.error('Failed to copy', err);
-        }
-    };
-
-    // Auto-scroll to bottom of workspace when new content is added
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-                top: scrollRef.current.scrollHeight,
-                behavior: 'smooth'
-            });
-        }
-    }, [content, isWriting]);
-
-    if (!isOpen) return null;
-
-    // Process blocks
-    const blocks = Array.isArray(content) ? content : [];
-
-    // sophisticated markdown-lite renderer
-    const renderMarkdown = (text) => {
-        if (!text) return null;
-
-        const lines = text.split('\n');
-        return lines.map((line, i) => {
-            // Headings
-            if (line.startsWith('# ')) {
-                return <h1 key={i} className="text-4xl font-bold text-slate-900 dark:text-white mb-8 tracking-tight leading-[1.2]">{parseInline(line.slice(2))}</h1>;
-            }
-            if (line.startsWith('## ')) {
-                return <h2 key={i} className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mt-10 mb-6 tracking-tight">{parseInline(line.slice(3))}</h2>;
-            }
-            if (line.startsWith('### ')) {
-                return <h3 key={i} className="text-xl font-semibold text-slate-700 dark:text-slate-200 mt-8 mb-4 tracking-tight">{parseInline(line.slice(4))}</h3>;
-            }
-
-            // Bullet Points
-            if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-                const content = line.trim().slice(2);
-                return (
-                    <div key={i} className="flex gap-3 mb-3 pl-2 group/item">
-                        <span className="text-indigo-500 mt-2 text-[10px] opacity-60 group-hover/item:opacity-100 transition-opacity">•</span>
-                        <p className="text-slate-600 dark:text-slate-300 text-[17px] leading-[1.7] opacity-90">{parseInline(content)}</p>
-                    </div>
-                );
-            }
-
-            // Empty lines
-            if (line.trim() === '') return <div key={i} className="h-4" />;
-
-            // Normal paragraphs
-            return <p key={i} className="text-slate-600 dark:text-slate-300 text-[17px] leading-[1.8] mb-6 opacity-90">{parseInline(line)}</p>;
-        });
-    };
-
-    // Helper to parse bold/italic within a line
-    const parseInline = (line) => {
-        if (!line) return "";
-
-        // Match **bold**
-        const parts = line.split(/(\*\*.*?\*\*)/g);
-        return parts.map((part, i) => {
-            if (part.startsWith('**') && part.endsWith('**')) {
-                return <strong key={i} className="font-bold text-slate-900 dark:text-white opacity-100">{part.slice(2, -2)}</strong>;
-            }
-            return part;
-        });
-    };
-
-    // ── Helper Component: Artifact Card ────────────────
-    const ArtifactCard = ({ title, label, children }) => (
+// ── ArtifactCard lifted OUT of Canvas render ──────────────────────────────────
+// Defining a component INSIDE another component's render function causes React
+// to treat it as a new component type every render → full unmount + remount.
+// Moving it here gives it a stable identity.
+const ArtifactCard = React.memo(function ArtifactCard({ title, label, children }) {
+    return (
         <div className="relative group/artifact animate-fade-in my-16">
             <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 to-transparent rounded-[3rem] opacity-0 group-hover/artifact:opacity-100 transition-opacity duration-500 -z-10 blur-xl px-10" />
             <div className="flex flex-col rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-[#111] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden transition-all hover:border-indigo-500/20">
@@ -109,11 +28,88 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
             </div>
         </div>
     );
+});
+
+// Custom inline parser removed in favor of ReactMarkdown
+
+// ── MathBlock: isolated so parse errors don't re-run unnecessarily ────────────
+const MathBlock = React.memo(function MathBlock({ value, title }) {
+    const config = useMemo(() => {
+        try {
+            if (typeof value === 'string') {
+                let cleanStr = value.replace(/^```(json)?\n?/mi, '').replace(/\n?```$/mi, '').trim();
+                return JSON.parse(cleanStr);
+            }
+            return value;
+        } catch {
+            return null;
+        }
+    }, [value]);
+
+    if (!config) {
+        return (
+            <ArtifactCard label="Interactive Plot" title={title}>
+                <div className="p-6 bg-rose-500/5 border-t border-rose-500/10">
+                    <div className="flex items-center gap-2 text-rose-500 font-bold text-[10px] uppercase tracking-widest mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                        Math Rendering Error
+                    </div>
+                    <pre className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed bg-black/5 dark:bg-black/20 p-4 rounded-xl overflow-x-auto">{value}</pre>
+                </div>
+            </ArtifactCard>
+        );
+    }
+
+    return (
+        <ArtifactCard label="Interactive Plot" title={title}>
+            <MafsRenderer config={config} />
+        </ArtifactCard>
+    );
+});
+
+// ── Main Canvas ───────────────────────────────────────────────────────────────
+export default function Canvas({ content, isOpen, onClose, onClear, isWriting, width }) {
+    const scrollRef = useRef(null);
+    const [isCopied, setIsCopied] = useState(false);
+
+    // Stable width style — avoid calling window.innerWidth on every render
+    const widthStyle = useMemo(
+        () => ({ width: window.innerWidth < 768 ? '100vw' : `${width}px` }),
+        [width]
+    );
+
+    const handleCopy = useCallback(async () => {
+        if (!content || !Array.isArray(content)) return;
+        try {
+            const textToCopy = content
+                .filter(b => b.type === 'text')
+                .map(b => b.value)
+                .join('\n\n');
+            if (textToCopy) {
+                await navigator.clipboard.writeText(textToCopy);
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            }
+        } catch (err) {
+            console.error('Failed to copy', err);
+        }
+    }, [content]);
+
+    // Auto-scroll to bottom when content grows
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+        }
+    }, [content, isWriting]);
+
+    if (!isOpen) return null;
+
+    const blocks = Array.isArray(content) ? content : [];
 
     return (
         <div
             className="flex flex-col h-full bg-white dark:bg-[#0D0D0D] md:border-l border-slate-200 dark:border-white/5 shadow-[-1px_0_10px_rgba(0,0,0,0.05)] dark:shadow-none z-[40] font-sans overflow-hidden relative transition-colors duration-300 w-full"
-            style={{ width: window.innerWidth < 768 ? '100vw' : `${width}px` }}
+            style={widthStyle}
         >
             {/* Subtle Gradient Glow */}
             <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
@@ -162,9 +158,6 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         )}
                     </button>
-                    <button className="px-5 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
-                        SHARE
-                    </button>
                 </div>
             </div>
 
@@ -186,42 +179,40 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
                     ) : (
                         <div className="space-y-4">
                             {blocks.map((block, idx) => (
-                                <React.Fragment key={idx}>
+                                // Use block content as key so React can track blocks across re-renders
+                                <React.Fragment key={`${block.type}-${block.title || idx}`}>
                                     {block.type === 'image' ? (
                                         <ArtifactCard label="AI Visualization" title={block.title}>
-                                            <div className="relative overflow-hidden group/img">
-                                                <img src={block.value} alt="AI Visualization" className="w-full object-contain bg-slate-50 dark:bg-[#111]" />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 dark:from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity"></div>
-                                            </div>
+                                            <ErrorBoundary>
+                                                <div className="relative overflow-hidden group/img">
+                                                    <img src={block.value} alt="AI Visualization" className="w-full object-contain bg-slate-50 dark:bg-[#111]" />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 dark:from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity"></div>
+                                                </div>
+                                            </ErrorBoundary>
                                         </ArtifactCard>
                                     ) : block.type === 'math' ? (
-                                        <ArtifactCard label="Interactive Plot" title={block.title}>
-                                            {(() => {
-                                                try {
-                                                    const config = typeof block.value === 'string' ? JSON.parse(block.value) : block.value;
-                                                    return <MafsRenderer config={config} />;
-                                                } catch (e) {
-                                                    return (
-                                                        <div className="p-6 bg-rose-500/5 border-t border-rose-500/10">
-                                                            <div className="flex items-center gap-2 text-rose-500 font-bold text-[10px] uppercase tracking-widest mb-3">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
-                                                                Math Rendering Error
-                                                            </div>
-                                                            <pre className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed bg-black/5 dark:bg-black/20 p-4 rounded-xl overflow-x-auto">
-                                                                {block.value}
-                                                            </pre>
-                                                        </div>
-                                                    );
-                                                }
-                                            })()}
-                                        </ArtifactCard>
+                                        <ErrorBoundary>
+                                            <MathBlock value={block.value} title={block.title} />
+                                        </ErrorBoundary>
                                     ) : block.type === 'mermaid' ? (
                                         <ArtifactCard label="Logic Architecture" title={block.title}>
-                                            <MermaidRenderer chart={block.value} />
+                                            <ErrorBoundary>
+                                                <MermaidRenderer chart={block.value} />
+                                            </ErrorBoundary>
+                                        </ArtifactCard>
+                                    ) : block.type === 'quiz' ? (
+                                        <ArtifactCard label="Knowledge Check" title={block.title}>
+                                            <ErrorBoundary>
+                                                <QuizRenderer config={block.value} />
+                                            </ErrorBoundary>
                                         </ArtifactCard>
                                     ) : (
-                                        <div className="font-sans py-4">
-                                            {renderMarkdown(block.value)}
+                                        <div className="font-sans py-4 prose prose-slate dark:prose-invert max-w-none prose-pre:bg-slate-100 dark:prose-pre:bg-white/5 prose-pre:p-4 prose-p:leading-relaxed prose-a:text-indigo-500">
+                                            <ErrorBoundary>
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {block.value}
+                                                </ReactMarkdown>
+                                            </ErrorBoundary>
                                         </div>
                                     )}
                                 </React.Fragment>
@@ -244,4 +235,3 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
         </div>
     );
 }
-

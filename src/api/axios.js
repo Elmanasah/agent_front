@@ -14,12 +14,10 @@ api.interceptors.response.use(
         return response;
     },
     (error) => {
-        // If the server returns a 401 Unauthorized, we can clear the token and force a re-login
+        // If the server returns a 401 Unauthorized the AuthContext will
+        // call loadMe() on next navigation which will set user to null → redirect to /login
         if (error.response && error.response.status === 401) {
-            console.warn('[Axios] 401 Unauthorized - Clearing token.');
-            localStorage.removeItem('token');
-            // A full page reload will trigger the AuthContext logic to push the user to /login
-            // In a more complex app, we might emit an event or use a history object here.
+            console.warn('[Axios] 401 Unauthorized.');
         }
         return Promise.reject(error);
     }
