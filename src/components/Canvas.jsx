@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MafsRenderer from './MafsRenderer';
 import MermaidRenderer from './MermaidRenderer';
+import QuizRenderer from './QuizRenderer';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { ErrorBoundary } from './ErrorBoundary';
 
 // ── ArtifactCard lifted OUT of Canvas render ──────────────────────────────────
 // Defining a component INSIDE another component's render function causes React
@@ -26,46 +30,17 @@ const ArtifactCard = React.memo(function ArtifactCard({ title, label, children }
     );
 });
 
-// ── Inline markdown helpers lifted out ───────────────────────────────────────
-function parseInline(line) {
-    if (!line) return '';
-    const parts = line.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={i} className="font-bold text-slate-900 dark:text-white opacity-100">{part.slice(2, -2)}</strong>;
-        }
-        return part;
-    });
-}
-
-function renderMarkdown(text) {
-    if (!text) return null;
-    return text.split('\n').map((line, i) => {
-        if (line.startsWith('# '))
-            return <h1 key={i} className="text-4xl font-bold text-slate-900 dark:text-white mb-8 tracking-tight leading-[1.2]">{parseInline(line.slice(2))}</h1>;
-        if (line.startsWith('## '))
-            return <h2 key={i} className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mt-10 mb-6 tracking-tight">{parseInline(line.slice(3))}</h2>;
-        if (line.startsWith('### '))
-            return <h3 key={i} className="text-xl font-semibold text-slate-700 dark:text-slate-200 mt-8 mb-4 tracking-tight">{parseInline(line.slice(4))}</h3>;
-        if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-            const content = line.trim().slice(2);
-            return (
-                <div key={i} className="flex gap-3 mb-3 pl-2 group/item">
-                    <span className="text-indigo-500 mt-2 text-[10px] opacity-60 group-hover/item:opacity-100 transition-opacity">•</span>
-                    <p className="text-slate-600 dark:text-slate-300 text-[17px] leading-[1.7] opacity-90">{parseInline(content)}</p>
-                </div>
-            );
-        }
-        if (line.trim() === '') return <div key={i} className="h-4" />;
-        return <p key={i} className="text-slate-600 dark:text-slate-300 text-[17px] leading-[1.8] mb-6 opacity-90">{parseInline(line)}</p>;
-    });
-}
+// Custom inline parser removed in favor of ReactMarkdown
 
 // ── MathBlock: isolated so parse errors don't re-run unnecessarily ────────────
 const MathBlock = React.memo(function MathBlock({ value, title }) {
     const config = useMemo(() => {
         try {
-            return typeof value === 'string' ? JSON.parse(value) : value;
+            if (typeof value === 'string') {
+                let cleanStr = value.replace(/^```(json)?\n?/mi, '').replace(/\n?```$/mi, '').trim();
+                return JSON.parse(cleanStr);
+            }
+            return value;
         } catch {
             return null;
         }
@@ -208,20 +183,36 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
                                 <React.Fragment key={`${block.type}-${block.title || idx}`}>
                                     {block.type === 'image' ? (
                                         <ArtifactCard label="AI Visualization" title={block.title}>
-                                            <div className="relative overflow-hidden group/img">
-                                                <img src={block.value} alt="AI Visualization" className="w-full object-contain bg-slate-50 dark:bg-[#111]" />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 dark:from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity"></div>
-                                            </div>
+                                            <ErrorBoundary>
+                                                <div className="relative overflow-hidden group/img">
+                                                    <img src={block.value} alt="AI Visualization" className="w-full object-contain bg-slate-50 dark:bg-[#111]" />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 dark:from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity"></div>
+                                                </div>
+                                            </ErrorBoundary>
                                         </ArtifactCard>
                                     ) : block.type === 'math' ? (
-                                        <MathBlock value={block.value} title={block.title} />
+                                        <ErrorBoundary>
+                                            <MathBlock value={block.value} title={block.title} />
+                                        </ErrorBoundary>
                                     ) : block.type === 'mermaid' ? (
                                         <ArtifactCard label="Logic Architecture" title={block.title}>
-                                            <MermaidRenderer chart={block.value} />
+                                            <ErrorBoundary>
+                                                <MermaidRenderer chart={block.value} />
+                                            </ErrorBoundary>
+                                        </ArtifactCard>
+                                    ) : block.type === 'quiz' ? (
+                                        <ArtifactCard label="Knowledge Check" title={block.title}>
+                                            <ErrorBoundary>
+                                                <QuizRenderer config={block.value} />
+                                            </ErrorBoundary>
                                         </ArtifactCard>
                                     ) : (
-                                        <div className="font-sans py-4">
-                                            {renderMarkdown(block.value)}
+                                        <div className="font-sans py-4 prose prose-slate dark:prose-invert max-w-none prose-pre:bg-slate-100 dark:prose-pre:bg-white/5 prose-pre:p-4 prose-p:leading-relaxed prose-a:text-indigo-500">
+                                            <ErrorBoundary>
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {block.value}
+                                                </ReactMarkdown>
+                                            </ErrorBoundary>
                                         </div>
                                     )}
                                 </React.Fragment>

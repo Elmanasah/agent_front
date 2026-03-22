@@ -109,6 +109,10 @@ export default function Dashboard() {
                     setIsCanvasOpen(true);
                     setCanvasContent(prev => [...prev, { type: 'math', value: result.math.json, title: result.math.title }]);
                 }
+                if (result.quiz) {
+                    setIsCanvasOpen(true);
+                    setCanvasContent(prev => [...prev, { type: 'quiz', value: result.quiz.json, title: result.quiz.title }]);
+                }
                 break;
             }
 
