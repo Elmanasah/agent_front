@@ -7,6 +7,8 @@ export class AudioOutputManager {
     this._ready = false;
   }
 
+  get context() { return this._ctx; }
+
   async _init() {
     if (this._ready) return;
     this._ctx = new AudioContext({ sampleRate: 24000 });
@@ -59,6 +61,8 @@ export class AudioInputManager {
     /** @type {(base64: string) => void} */
     this.onChunk = () => {};
   }
+
+  get context() { return this._ctx; }
 
   async connect(deviceId) {
     this._ctx = new AudioContext({ sampleRate: 16000 });

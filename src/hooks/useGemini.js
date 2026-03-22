@@ -23,6 +23,7 @@ export function useGemini() {
   const audioInRef = useRef(new AudioInputManager());
   const videoRef = useRef(null);
   const screenRef = useRef(null);
+  const micMutedRef = useRef(false);
 
   const addMessage = useCallback((role, text) => {
     setMessages((prev) => {
@@ -53,12 +54,13 @@ export function useGemini() {
       api.onConnectionStarted = async () => {
         setStatus("connected");
         try {
-          // Explicitly resume AudioContext to bypass browser autoplay policies
           if (audioOutRef.current.context?.state === 'suspended') {
             await audioOutRef.current.context.resume();
           }
-          audioInRef.current.onChunk = (b64) => api.sendAudio(b64);
-          await audioInRef.current.connect();
+          if (!micMutedRef.current) {
+            audioInRef.current.onChunk = (b64) => api.sendAudio(b64);
+            await audioInRef.current.connect();
+          }
         } catch (err) {
           setError("Microphone access denied: " + err.message);
         }
@@ -119,6 +121,7 @@ export function useGemini() {
 
     if (micMuted) {
       try {
+        micMutedRef.current = false;
         await audioInRef.current.connect();
         audioInRef.current.onChunk = (b64) => geminiRef.current?.sendAudio(b64);
         setMicMuted(false);
@@ -126,6 +129,7 @@ export function useGemini() {
         setError("Mic error: " + err.message);
       }
     } else {
+      micMutedRef.current = true;
       audioInRef.current.disconnect();
       setMicMuted(true);
     }
