@@ -41,6 +41,7 @@ export default function WebsocketChat() {
     connect,
     disconnect,
     toggleMic,
+    addMessage,
     sendText,
     startCamera,
     stopCamera,
