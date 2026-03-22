@@ -1,20 +1,35 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 
-const ChatWindow = ({ messages, loading }) => {
+const ChatWindow = React.memo(function ChatWindow({ messages, loading }) {
     const bottomRef = useRef(null);
+    const prevLengthRef = useRef(messages.length);
 
-    // Auto-scroll to the latest message
+    // Auto-scroll when new messages arrive (not on every re-render)
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, loading]);
+        if (messages.length !== prevLengthRef.current) {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+            prevLengthRef.current = messages.length;
+        }
+    }, [messages]);
+
+    // Separate scroll for loading indicator appearing/disappearing
+    useEffect(() => {
+        if (loading) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [loading]);
+
+    const lastIdx = messages.length - 1;
 
     return (
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 sm:py-8 space-y-2 relative scroll-smooth CustomScrollbar">
 
             {messages.map((msg, i) => (
-                <div key={msg.id || i} style={{ animationDelay: `${i * 0.1}s` }} className="animate-bubble-entrance">
+                // Only the newest message gets the entrance animation
+                <div
+                    key={msg.id || i}
+                    className={i === lastIdx ? 'animate-bubble-entrance' : undefined}
+                >
                     <MessageBubble role={msg.role} text={msg.text} attachments={msg.attachments} />
                 </div>
             ))}
@@ -28,6 +43,6 @@ const ChatWindow = ({ messages, loading }) => {
             <div ref={bottomRef} className="h-4" />
         </div>
     );
-};
+});
 
 export default ChatWindow;

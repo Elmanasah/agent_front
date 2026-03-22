@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
-    const [theme, setTheme] = useState(localStorage.getItem('learnify_theme') || 'dark');
+    const [theme, setTheme] = useState(localStorage.getItem('horus_theme') || 'dark');
 
     useEffect(() => {
         if (theme === 'dark') {
@@ -13,12 +13,8 @@ export function ThemeProvider({ children }) {
             document.documentElement.classList.remove('dark');
             document.documentElement.style.colorScheme = 'light';
         }
-        localStorage.setItem('learnify_theme', theme);
-
-        return () => {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.style.colorScheme = '';
-        };
+        localStorage.setItem('horus_theme', theme);
+        // No cleanup — the theme class should persist across re-renders
     }, [theme]);
 
     const toggleTheme = () => {

@@ -98,8 +98,8 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
 
                 {!isSearchOpen && (
                     <>
-                        <Link to="/dashboard" className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${location.pathname === '/' ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/' ? 'text-indigo-600 dark:text-indigo-400' : ''}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <Link to="/dashboard" className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${location.pathname === '/dashboard' ? 'bg-slate-200/60 dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'hover:bg-slate-200/40 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/dashboard' ? 'text-indigo-600 dark:text-indigo-400' : ''}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             <span className="text-[13px] font-medium">Chat</span>
                         </Link>
 
@@ -107,6 +107,14 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/socket' ? 'text-indigo-600 dark:text-indigo-400' : ''}><path d="m19 8-4 4-4-4" /><path d="m5 16 4-4 4 4" /></svg>
                             <span className="text-[13px] font-medium">Realtime</span>
                         </Link>
+
+                        {user?.role === 'admin' && (
+                            <Link to="/admin" className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${location.pathname === '/admin' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-sm' : 'hover:bg-amber-500/5 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={location.pathname === '/admin' ? 'text-amber-500' : ''}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                <span className="text-[13px] font-medium">Admin Panel</span>
+                                <span className="ml-auto text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/20">Admin</span>
+                            </Link>
+                        )}
                     </>
                 )}
 

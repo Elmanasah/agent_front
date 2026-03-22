@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import ChatWindow from '../components/ChatWindow';
 import InputBar from '../components/InputBar';
@@ -7,6 +7,7 @@ import KnowledgeBase from '../components/KnowledgeBase';
 import Canvas from '../components/Canvas';
 import ChatService from '../api/chat-services';
 import SessionService from '../api/session-services';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Dashboard() {
     const [messages, setMessages] = useState([]);
@@ -15,7 +16,7 @@ export default function Dashboard() {
     const [history, setHistory] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
-    const [theme, setTheme] = useState(localStorage.getItem('learnify_theme') || 'dark');
+    const { theme, toggleTheme } = useTheme();
     const location = useLocation();
 
     // Canvas state
@@ -35,36 +36,39 @@ export default function Dashboard() {
     const abortRef = useRef(null);
 
     // ── Canvas resizing ────────────────────────────────────────────────────────
-    const startResizing = (e) => { e.preventDefault(); setIsResizing(true); };
-    const stopResizing = () => setIsResizing(false);
-    const resize = (e) => {
-        if (isResizing) {
-            const w = window.innerWidth - e.clientX;
-            if (w > 350 && w < window.innerWidth * 0.8) setCanvasWidth(w);
-        }
-    };
+    const startResizing = useCallback((e) => { e.preventDefault(); setIsResizing(true); }, []);
 
     useEffect(() => {
-        if (isResizing) {
-            window.addEventListener('mousemove', resize);
-            window.addEventListener('mouseup', stopResizing);
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-        } else {
-            window.removeEventListener('mousemove', resize);
-            window.removeEventListener('mouseup', stopResizing);
+        if (!isResizing) {
             document.body.style.cursor = 'default';
             document.body.style.userSelect = 'auto';
+            return;
         }
+
+        // Define handlers INSIDE the effect so each run has a fresh, stable reference
+        // This is the only correct way to pair addEventListener / removeEventListener
+        const handleMove = (e) => {
+            const w = window.innerWidth - e.clientX;
+            if (w > 350 && w < window.innerWidth * 0.8) setCanvasWidth(w);
+        };
+        const handleUp = () => setIsResizing(false);
+
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleUp);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
         return () => {
-            window.removeEventListener('mousemove', resize);
-            window.removeEventListener('mouseup', stopResizing);
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleUp);
+            document.body.style.cursor = 'default';
+            document.body.style.userSelect = 'auto';
         };
     }, [isResizing]);
 
     // ── SSE event handler ──────────────────────────────────────────────────────
 
-    const handleSseEvent = (event, msgIndex) => {
+    const handleSseEvent = useCallback((event, msgIndex) => {
         switch (event.type) {
 
             case 'token':
@@ -75,7 +79,6 @@ export default function Dashboard() {
                     if (last && last.role === 'agent') {
                         updated[msgIndex] = { ...last, text: last.text + event.text };
                     } else {
-                        // Create the message if it doesn't exist
                         updated[msgIndex] = { role: 'agent', text: event.text };
                     }
                     return updated;
@@ -114,7 +117,6 @@ export default function Dashboard() {
                 break;
 
             case 'done':
-                // Save session ID from the first message
                 if (event.sessionId && !currentSessionId) {
                     setCurrentSessionId(event.sessionId);
                     SessionService.list().then(d => setHistory(d.sessions || []));
@@ -124,7 +126,7 @@ export default function Dashboard() {
             default:
                 break;
         }
-    };
+    }, [currentSessionId]);
 
     // ── Send message ───────────────────────────────────────────────────────────
 
@@ -136,14 +138,23 @@ export default function Dashboard() {
         const controller = new AbortController();
         abortRef.current = controller;
 
-        // Push user message
-        setMessages(prev => [
-            ...prev,
-            { role: 'user', text, attachments },
-        ]);
+        // Push user + empty agent placeholder together so we know the exact index
+        // BEFORE any state update batching or SSE tokens come in.
+        let agentIndex;
+        setMessages(prev => {
+            agentIndex = prev.length + 1; // user = prev.length, agent = prev.length + 1
+            return [
+                ...prev,
+                { role: 'user', text, attachments },
+                // { role: 'agent', text: '' },
+            ];
+        });
         setLoading(true);
         setError(null);
         setActiveTool(null);
+
+        // Capture the agent index right after the synchronous setState call
+        const indexRef = { get: () => agentIndex };
 
         try {
             await ChatService.streamChat({
@@ -151,7 +162,7 @@ export default function Dashboard() {
                 attachments: attachments.map(a => ({ data: a.data, mimeType: a.mimeType })),
                 sessionId: currentSessionId,
                 signal: controller.signal,
-                onEvent: (event) => handleSseEvent(event, messages.length + 1),
+                onEvent: (event) => handleSseEvent(event, indexRef.get()),
             });
         } catch (err) {
             if (err.name !== 'AbortError') {
@@ -164,26 +175,22 @@ export default function Dashboard() {
         }
     };
 
-    // ── Theme ──────────────────────────────────────────────────────────────────
-
-    useEffect(() => {
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-            document.documentElement.style.colorScheme = 'dark';
-        } else {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.style.colorScheme = 'light';
-        }
-        localStorage.setItem('learnify_theme', theme);
-    }, [theme]);
-
-    const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    // Theme is now provided by ThemeContext (via AppRoutes ThemeLayout wrapper)
+    // toggleTheme and theme come from useTheme() above
 
     // ── Sessions ───────────────────────────────────────────────────────────────
 
     useEffect(() => {
         SessionService.list()
-            .then(data => setHistory(data.sessions || []))
+            .then(data => {
+                // Sort sessions newest-first by updatedAt, falling back to createdAt
+                const sessions = (data.sessions || []).sort((a, b) => {
+                    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                    return bTime - aTime;
+                });
+                setHistory(sessions);
+            })
             .catch(err => console.warn('[sessions] Could not load:', err.message));
     }, []);
 
@@ -216,8 +223,16 @@ export default function Dashboard() {
             const data = await SessionService.get(sessionId);
             if (data.session) {
                 setCurrentSessionId(sessionId);
+
+                // Sort messages by createdAt ascending (oldest first = top of chat)
+                const sorted = [...(data.session.messages || [])].sort((a, b) => {
+                    const aTime = new Date(a.createdAt || 0).getTime();
+                    const bTime = new Date(b.createdAt || 0).getTime();
+                    return aTime - bTime;
+                });
+
                 const display = [];
-                for (const msg of data.session.messages) {
+                for (const msg of sorted) {
                     const text = msg.parts?.map(p => p.text || '').join('') || '';
                     if (!text.trim()) continue;
                     display.push({ role: msg.role === 'model' ? 'agent' : 'user', text });

@@ -73,6 +73,7 @@ export function useGemini() {
 
       api.onDisconnected = () => {
         setStatus("disconnected");
+        audioOutRef.current.destroy();
         _stopAll();
       };
 
@@ -95,6 +96,7 @@ export function useGemini() {
 
   const disconnect = useCallback(() => {
     geminiRef.current?.disconnect();
+    audioOutRef.current.destroy();
     _stopAll();
     setStatus("disconnected");
   }, []);
@@ -145,6 +147,9 @@ export function useGemini() {
   const stopScreen = useCallback(() => {
     screenRef.current?.stop();
   }, []);
+
+  const clearError = useCallback(() => setError(null), []);
+  const clearToolResults = useCallback(() => setToolResults([]), []);
 
   const sendText = useCallback(
     async (text, attachments = []) => {
@@ -197,8 +202,8 @@ export function useGemini() {
     stopCamera,
     startScreen,
     stopScreen,
-    clearError: () => setError(null),
+    clearError,
     toolResults,
-    clearToolResults: () => setToolResults([]),
+    clearToolResults,
   };
 }
