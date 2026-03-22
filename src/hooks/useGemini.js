@@ -38,7 +38,7 @@ export function useGemini() {
   }, []);
 
   const connect = useCallback(
-    async ({ accessToken, projectId, location, systemInstructions, customServiceUrl }) => {
+    async ({ getTokenFn, projectId, location, systemInstructions, customServiceUrl }) => {
       setError(null);
       setStatus("connecting");
 
@@ -53,6 +53,10 @@ export function useGemini() {
       api.onConnectionStarted = async () => {
         setStatus("connected");
         try {
+          // Explicitly resume AudioContext to bypass browser autoplay policies
+          if (audioOutRef.current.context?.state === 'suspended') {
+            await audioOutRef.current.context.resume();
+          }
           audioInRef.current.onChunk = (b64) => api.sendAudio(b64);
           await audioInRef.current.connect();
         } catch (err) {
@@ -88,8 +92,8 @@ export function useGemini() {
       };
 
       geminiRef.current = api;
-      // Pass GCP bearer token — obtained securely via /api/v1/token (server SA creds)
-      api.connect(accessToken, customServiceUrl);
+      // Pass the async token fetcher function down to the API client for auto-refresh
+      api.connect(getTokenFn, customServiceUrl);
     },
     [addMessage]
   );
@@ -108,6 +112,11 @@ export function useGemini() {
   }
 
   const toggleMic = useCallback(async () => {
+    // Explicitly resume audio context on a trusted user interaction event
+    if (audioOutRef.current.context?.state === 'suspended') {
+      audioOutRef.current.context.resume().catch(e => console.warn(e));
+    }
+
     if (micMuted) {
       try {
         await audioInRef.current.connect();

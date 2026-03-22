@@ -142,18 +142,16 @@ export default function WebsocketChat() {
       const configResp = await TokenService.getConfig();
       const { projectId, location } = configResp;
 
-      // 2. Get a short-lived GCP access token via the server's service account
-      //    This is the secure path — browser never touches GCP credentials directly
-      const tokenResp = await TokenService.getToken();
-      const { token: accessToken } = tokenResp;
+      // 2. Define the token fetcher function (used for initial connect & auto-refresh)
+      const getTokenFn = async () => await TokenService.getToken();
 
-      if (!projectId || !accessToken) {
-        throw new Error("Missing GCP configuration or access token");
+      if (!projectId) {
+        throw new Error("Missing GCP configuration");
       }
 
       // 3. Connect — proxy uses bearer_token to authenticate to GCP Vertex AI
       connect({
-        accessToken,
+        getTokenFn,
         projectId,
         location,
         systemInstructions:

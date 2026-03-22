@@ -20,17 +20,52 @@ export class GeminiLiveAPI {
     this.onToolResult = () => { };
     this.onError = (msg) => console.error("[GeminiLiveAPI]", msg);
     this.onDisconnected = () => { };
+
+    // Reconnection & token refresh state
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectTimeout = null;
+    this.tokenRefreshInterval = null;
+    this.getTokenFn = null;
+    this.customServiceUrl = null;
+    this.isIntentionallyClosing = false;
   }
 
-  connect(accessToken, customServiceUrl) {
+  /**
+   * Connect to the proxy.
+   * @param {Function} getTokenFn - async function returning { token }
+   * @param {string} customServiceUrl - optional
+   */
+  async connect(getTokenFn, customServiceUrl) {
+    this.getTokenFn = getTokenFn;
+    this.customServiceUrl = customServiceUrl;
+    this.isIntentionallyClosing = false;
+    this.reconnectAttempts = 0;
+    await this._doConnect();
+  }
+
+  async _doConnect() {
     console.log("[GeminiLiveAPI] Connecting to proxy…");
+    
+    let accessToken;
+    try {
+      const { token } = await this.getTokenFn();
+      accessToken = token;
+    } catch (err) {
+      this.onError("Failed to fetch access token: " + err.message);
+      return;
+    }
+
+    this._startTokenRefresh();
+
     this.ws = new WebSocket(PROXY_URL);
 
     this.ws.onopen = () => {
       console.log("[GeminiLiveAPI] Socket open → sending auth");
+      this.reconnectAttempts = 0; // reset on successful open
       this._send({
         bearer_token: accessToken,
-        service_url: customServiceUrl || this.serviceUrl,
+        service_url: this.customServiceUrl || this.serviceUrl,
       });
     };
 
@@ -38,20 +73,58 @@ export class GeminiLiveAPI {
 
     this.ws.onclose = (evt) => {
       console.log("[GeminiLiveAPI] Closed", evt.code, evt.reason);
-      this.onDisconnected();
-      if (evt.code !== 1000) {
-        this.onError(
-          `Connection closed (${evt.code}): ${evt.reason || "unknown"}`,
-        );
+      this._stopTokenRefresh();
+      
+      if (this.isIntentionallyClosing) {
+        this.onDisconnected();
+        return;
+      }
+
+      // Auto-reconnect logic (don't reconnect on normal closures 1000/1001)
+      if (evt.code !== 1000 && evt.code !== 1001 && this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.reconnectAttempts++;
+        const backoffMs = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+        console.log(`[GeminiLiveAPI] Reconnecting in ${backoffMs}ms (Attempt ${this.reconnectAttempts})...`);
+        this.reconnectTimeout = setTimeout(() => this._doConnect(), backoffMs);
+      } else {
+        this.onDisconnected();
+        if (evt.code !== 1000) {
+          this.onError(`Connection closed (${evt.code}): ${evt.reason || "unknown"}`);
+        }
       }
     };
 
     this.ws.onerror = () => {
-      this.onError("WebSocket error — is the proxy server running?");
+      // The onclose handler will trigger the actual reconnect/error logic
+      console.warn("[GeminiLiveAPI] WebSocket error occurred");
     };
   }
 
+  _startTokenRefresh() {
+    this._stopTokenRefresh();
+    // Refresh token every 50 minutes (tokens usually live for 60m)
+    this.tokenRefreshInterval = setInterval(async () => {
+      console.log("[GeminiLiveAPI] Refreshing GCP access token...");
+      try {
+        const { token } = await this.getTokenFn();
+        if (this.ws?.readyState === WebSocket.OPEN) {
+          // Send a new auth packet to the proxy to update the upstream Bidi connecting
+          this._send({ bearer_token: token });
+        }
+      } catch (err) {
+        console.error("[GeminiLiveAPI] Failed to refresh token:", err);
+      }
+    }, 50 * 60 * 1000);
+  }
+
+  _stopTokenRefresh() {
+    if (this.tokenRefreshInterval) clearInterval(this.tokenRefreshInterval);
+    if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
+  }
+
   disconnect() {
+    this.isIntentionallyClosing = true;
+    this._stopTokenRefresh();
     this.ws?.close(1000, "User disconnect");
     this.ws = null;
   }
