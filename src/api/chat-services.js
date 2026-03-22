@@ -21,15 +21,12 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
  *   { type: "done",        sessionId: "...", toolResults: [...] }
  */
 async function streamChat({ message, attachments = [], sessionId, onEvent, signal }) {
-  const token = localStorage.getItem('token');
-
   const response = await fetch(`${BASE_URL}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    credentials: 'include',
+    credentials: 'include', // sends the HTTP-only JWT cookie
     body: JSON.stringify({ message, attachments, sessionId }),
     signal,
   });

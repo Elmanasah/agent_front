@@ -1,89 +1,86 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mermaid from 'mermaid';
 
-// Initialize mermaid with some defaults
+// Initialize mermaid once at module level
 mermaid.initialize({
-  startOnLoad: true,
+  startOnLoad: false,
   theme: 'default',
   securityLevel: 'loose',
   fontFamily: 'Inter, system-ui, sans-serif',
 });
 
-export default function MermaidRenderer({ chart }) {
+// Lifted to module level — pure function, no need to recreate every render
+function preprocessChart(code) {
+  if (!code) return '';
+  let cleaned = code.trim();
+  cleaned = cleaned.replace(/--\s*(.*?)\s*-->/g, (match, label) => {
+    const cleanLabel = label.replace(/^["']|["']$/g, '').trim();
+    return `-->|${cleanLabel}|`;
+  });
+  cleaned = cleaned.split('\n').map(line => line.trim().replace(/;$/, '')).join('\n');
+  if (!cleaned.startsWith('graph ') && !cleaned.startsWith('sequenceDiagram') && !cleaned.startsWith('pie')) {
+    cleaned = 'graph TD\n' + cleaned;
+  }
+  return cleaned;
+}
+
+const MermaidRenderer = React.memo(function MermaidRenderer({ chart }) {
   const containerRef = useRef(null);
   const [svg, setSvg] = useState('');
+  const [pendingSvg, setPendingSvg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const preprocessChart = (code) => {
-    if (!code) return '';
+  const renderChart = useCallback(async () => {
+    if (!chart || !containerRef.current) return;
 
-    let cleaned = code.trim();
+    setIsLoading(true);
+    setError(null);
 
-    // 1. Fix common AI label mistake: "-- Label -->" to "-->|Label|"
-    // Also handles "-- \"Label\" -->"
-    cleaned = cleaned.replace(/--\s*(.*?)\s*-->/g, (match, label) => {
-      const cleanLabel = label.replace(/^["']|["']$/g, '').trim();
-      return `-->|${cleanLabel}|`;
-    });
+    try {
+      const processedChart = preprocessChart(chart);
 
-    // 2. Remove trailing semicolons (AI loves adding these and they sometimes break things)
-    cleaned = cleaned.split('\n').map(line => line.trim().replace(/;$/, '')).join('\n');
+      // Is dark mode active?
+      const isDark = document.documentElement.classList.contains('dark');
 
-    // 3. Ensure we start with graph TD if the AI forgot the header or added junk
-    if (!cleaned.startsWith('graph ') && !cleaned.startsWith('sequenceDiagram') && !cleaned.startsWith('pie')) {
-      cleaned = 'graph TD\n' + cleaned;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: isDark ? 'dark' : 'default',
+        themeVariables: isDark ? {
+          primaryColor: '#6366f1',
+          primaryTextColor: '#fff',
+          primaryBorderColor: '#6366f1',
+          lineColor: '#64748b',
+          secondaryColor: '#1e293b',
+          tertiaryColor: '#0f172a'
+        } : {
+          primaryColor: '#6366f1',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#6366f1',
+          lineColor: '#94a3b8',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#e2e8f0'
+        },
+        securityLevel: 'loose',
+      });
+
+      const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+      const { svg: newSvg } = await mermaid.render(id, processedChart);
+
+      // Swap in new SVG only once it's ready — prevents blank flash
+      setSvg(newSvg);
+      setPendingSvg('');
+    } catch (err) {
+      console.error('Mermaid rendering failed:', err);
+      setError(err.message || 'Failed to parse diagram');
+    } finally {
+      setIsLoading(false);
     }
-
-    return cleaned;
-  };
+  }, [chart]);
 
   useEffect(() => {
-    const renderChart = async () => {
-      if (!chart || !containerRef.current) return;
-
-      try {
-        setError(null);
-        // Clear previous content
-        containerRef.current.innerHTML = '';
-
-        const processedChart = preprocessChart(chart);
-
-        // Is dark mode active?
-        const isDark = document.documentElement.classList.contains('dark');
-
-        // Re-initialize for each render to ensure theme is applied correctly
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: isDark ? 'dark' : 'default',
-          themeVariables: isDark ? {
-            primaryColor: '#6366f1',
-            primaryTextColor: '#fff',
-            primaryBorderColor: '#6366f1',
-            lineColor: '#64748b',
-            secondaryColor: '#1e293b',
-            tertiaryColor: '#0f172a'
-          } : {
-            primaryColor: '#6366f1',
-            primaryTextColor: '#1e293b',
-            primaryBorderColor: '#6366f1',
-            lineColor: '#94a3b8',
-            secondaryColor: '#f1f5f9',
-            tertiaryColor: '#e2e8f0'
-          },
-          securityLevel: 'loose',
-        });
-
-        const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-        const { svg } = await mermaid.render(id, processedChart);
-        setSvg(svg);
-      } catch (err) {
-        console.error('Mermaid rendering failed:', err);
-        setError(err.message || 'Failed to parse diagram');
-      }
-    };
-
     renderChart();
-  }, [chart]);
+  }, [renderChart]);
 
   if (error) {
     return (
@@ -123,11 +120,15 @@ export default function MermaidRenderer({ chart }) {
       <div className="absolute top-4 left-8 z-10">
         <span className="text-[10px] font-black text-indigo-500/40 tracking-[0.3em] uppercase">Architecture Flow</span>
       </div>
+      {/* Fade between old and new SVG — no blank flash */}
       <div
         ref={containerRef}
-        className="flex justify-center w-full px-10 transition-opacity duration-500"
+        className="flex justify-center w-full px-10 transition-opacity duration-300"
+        style={{ opacity: isLoading ? 0.4 : 1 }}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
     </div>
-  );
-}
+  )
+});
+
+export default MermaidRenderer;

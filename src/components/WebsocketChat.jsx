@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatWindow from "./ChatWindow";
 import InputBar from "./InputBar";
@@ -9,19 +9,19 @@ import { useGemini } from "../hooks/useGemini";
 import { useDevices } from "../hooks/useDevices";
 import SessionService from "../api/session-services";
 import TokenService from "../api/token-services";
+import ImageService from "../api/image-services";
+import { useTheme } from "../context/ThemeContext";
 
 export default function WebsocketChat() {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
-  const [theme, setTheme] = useState(
-    localStorage.getItem("learnify_theme") || "dark",
-  );
+  const { theme, toggleTheme } = useTheme();
   const [isKBOpen, setIsKBOpen] = useState(false);
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [canvasContent, setCanvasContent] = useState([]);  // Array of { type, value, title? }
   const [isCanvasWriting, setIsCanvasWriting] = useState(false);
-  const [canvasWidth, setCanvasWidth] = useState(window.innerWidth * 0.55);
+  const [canvasWidth, setCanvasWidth] = useState(() => Math.max(350, window.innerWidth * 0.45));
   const [isResizing, setIsResizing] = useState(false);
   const [showVision, setShowVision] = useState(false);
   const [selectedCamera, setSelectedCamera] = useState("");
@@ -49,21 +49,7 @@ export default function WebsocketChat() {
 
   const { cameras } = useDevices();
 
-  // Theme persistence and applying to root for Tailwind dark mode
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      document.documentElement.style.colorScheme = "dark";
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.documentElement.style.colorScheme = "light";
-    }
-    localStorage.setItem("learnify_theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
+  // Theme is now provided by ThemeContext (via AppRoutes ThemeLayout wrapper)
 
   // Load sessions from server on mount
   useEffect(() => {
@@ -77,7 +63,7 @@ export default function WebsocketChat() {
   };
 
   const selectSession = (sessionId) => {
-    navigate("/", { state: { sessionId } });
+    navigate("/dashboard", { state: { sessionId } });
   };
 
   const deleteSession = async (sessionId) => {
@@ -94,33 +80,34 @@ export default function WebsocketChat() {
     if (!error) return;
     const timer = setTimeout(() => clearError(), 5000);
     return () => clearTimeout(timer);
-  }, [error]);
+  }, [error, clearError]);
 
   // Canvas resizing
-  const startResizing = (e) => { e.preventDefault(); setIsResizing(true); };
-  const stopResizing = () => setIsResizing(false);
-  const resize = (e) => {
-    if (isResizing) {
-      const w = window.innerWidth - e.clientX;
-      if (w > 350 && w < window.innerWidth * 0.8) setCanvasWidth(w);
-    }
-  };
+  const startResizing = useCallback((e) => { e.preventDefault(); setIsResizing(true); }, []);
 
   useEffect(() => {
-    if (isResizing) {
-      window.addEventListener('mousemove', resize);
-      window.addEventListener('mouseup', stopResizing);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    } else {
-      window.removeEventListener('mousemove', resize);
-      window.removeEventListener('mouseup', stopResizing);
+    if (!isResizing) {
       document.body.style.cursor = 'default';
       document.body.style.userSelect = 'auto';
+      return;
     }
+
+    const handleMove = (e) => {
+      const w = window.innerWidth - e.clientX;
+      if (w > 350 && w < window.innerWidth * 0.8) setCanvasWidth(w);
+    };
+    const handleUp = () => setIsResizing(false);
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
     return () => {
-      window.removeEventListener('mousemove', resize);
-      window.removeEventListener('mouseup', stopResizing);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
     };
   }, [isResizing]);
 
@@ -147,7 +134,7 @@ export default function WebsocketChat() {
       }
     }
     clearToolResults();
-  }, [toolResults]);
+  }, [toolResults, clearToolResults]);
 
   const handleConnect = async () => {
     try {
@@ -396,7 +383,21 @@ export default function WebsocketChat() {
 
               {/* ── Input Bar ─────────────────────────────────── */}
               <div className="p-4 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
-                <InputBar onSend={sendText} loading={status === "connecting"} />
+                <InputBar
+                  onSend={sendText}
+                  loading={status === "connecting"}
+                  onGenerate={async (prompt) => {
+                    try {
+                      const data = await ImageService.generate({ prompt });
+                      if (data?.data?.url) {
+                        setIsCanvasOpen(true);
+                        setCanvasContent(prev => [...prev, { type: 'image', value: data.data.url, title: prompt }]);
+                      }
+                    } catch (err) {
+                      console.error('[ImageGen]', err);
+                    }
+                  }}
+                />
               </div>
             </div>
 
@@ -404,7 +405,7 @@ export default function WebsocketChat() {
             {isCanvasOpen && (
               <div
                 className={`flex h-full relative ${isCanvasOpen ? 'max-md:fixed max-md:inset-0 max-md:z-[100]' : ''}`}
-                style={{ width: window.innerWidth < 768 ? '100%' : `${canvasWidth}px` }}
+                style={{ width: `${canvasWidth}px` }}
               >
                 <div
                   onMouseDown={startResizing}
@@ -419,7 +420,7 @@ export default function WebsocketChat() {
                     onClear={() => setCanvasContent([])}
                     onClose={() => setIsCanvasOpen(false)}
                     isWriting={isCanvasWriting}
-                    width={window.innerWidth < 768 ? window.innerWidth : canvasWidth}
+                    width={canvasWidth}
                   />
                 </div>
               </div>
