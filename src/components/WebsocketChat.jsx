@@ -132,6 +132,10 @@ export default function WebsocketChat() {
         setIsCanvasOpen(true);
         setCanvasContent(prev => [...prev, { type: 'image', value: result.image.url, title: result.image.prompt }]);
       }
+      if (result.quiz) {
+        setIsCanvasOpen(true);
+        setCanvasContent(prev => [...prev, { type: 'quiz', value: result.quiz.json, title: result.quiz.title }]);
+      }
     }
     clearToolResults();
   }, [toolResults, clearToolResults]);

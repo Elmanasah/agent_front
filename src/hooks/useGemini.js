@@ -180,6 +180,7 @@ export function useGemini() {
           onEvent: (event) => {
             if (event.type === 'token') addMessage('assistant', event.text);
             if (event.type === 'error') setError(event.message);
+            if (event.type === 'tool_result') setToolResults(prev => [...prev, event.result]);
           },
         });
       } catch (err) {

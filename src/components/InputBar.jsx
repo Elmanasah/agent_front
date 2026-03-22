@@ -102,6 +102,13 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
         };
     }, []);
 
+    // Auto-focus the input anytime we stop loading (e.g., agent finishes replying)
+    useEffect(() => {
+        if (!loading && !isRecording && !isToolsOpen && textareaRef.current) {
+            textareaRef.current.focus();
+        }
+    }, [loading, isRecording, isToolsOpen]);
+
     const toggleRecording = () => {
         if (!SpeechRecognition) {
             alert('Speech recognition is not supported in this browser.');

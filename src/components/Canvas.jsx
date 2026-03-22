@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MafsRenderer from './MafsRenderer';
 import MermaidRenderer from './MermaidRenderer';
+import QuizRenderer from './QuizRenderer';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -35,7 +36,11 @@ const ArtifactCard = React.memo(function ArtifactCard({ title, label, children }
 const MathBlock = React.memo(function MathBlock({ value, title }) {
     const config = useMemo(() => {
         try {
-            return typeof value === 'string' ? JSON.parse(value) : value;
+            if (typeof value === 'string') {
+                let cleanStr = value.replace(/^```(json)?\n?/mi, '').replace(/\n?```$/mi, '').trim();
+                return JSON.parse(cleanStr);
+            }
+            return value;
         } catch {
             return null;
         }
@@ -193,6 +198,12 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
                                         <ArtifactCard label="Logic Architecture" title={block.title}>
                                             <ErrorBoundary>
                                                 <MermaidRenderer chart={block.value} />
+                                            </ErrorBoundary>
+                                        </ArtifactCard>
+                                    ) : block.type === 'quiz' ? (
+                                        <ArtifactCard label="Knowledge Check" title={block.title}>
+                                            <ErrorBoundary>
+                                                <QuizRenderer config={block.value} />
                                             </ErrorBoundary>
                                         </ArtifactCard>
                                     ) : (
