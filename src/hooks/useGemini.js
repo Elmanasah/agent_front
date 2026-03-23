@@ -23,17 +23,19 @@ export function useGemini() {
   const audioInRef = useRef(new AudioInputManager());
   const videoRef = useRef(null);
   const screenRef = useRef(null);
+  const micMutedRef = useRef(false);
 
-  const addMessage = useCallback((role, text) => {
+  const addMessage = useCallback((role, text, attachments = []) => {
     setMessages((prev) => {
       const last = prev[prev.length - 1];
-      if (role === 'assistant' && last?.role === 'assistant') {
+      // Only append to last message if both are assistant text-only messages
+      if (role === 'assistant' && last?.role === 'assistant' && !attachments.length && (!last.attachments || !last.attachments.length)) {
         // If last message doesn't end with sentence punctuation, append to it
         if (!/[.!?]$/.test(last.text.trim())) {
           return [...prev.slice(0, -1), { ...last, text: last.text + text }];
         }
       }
-      return [...prev, { role, text, id: Date.now() + Math.random() }];
+      return [...prev, { role, text, attachments, id: Date.now() + Math.random() }];
     });
   }, []);
 
@@ -53,12 +55,13 @@ export function useGemini() {
       api.onConnectionStarted = async () => {
         setStatus("connected");
         try {
-          // Explicitly resume AudioContext to bypass browser autoplay policies
           if (audioOutRef.current.context?.state === 'suspended') {
             await audioOutRef.current.context.resume();
           }
-          audioInRef.current.onChunk = (b64) => api.sendAudio(b64);
-          await audioInRef.current.connect();
+          if (!micMutedRef.current) {
+            audioInRef.current.onChunk = (b64) => api.sendAudio(b64);
+            await audioInRef.current.connect();
+          }
         } catch (err) {
           setError("Microphone access denied: " + err.message);
         }
@@ -119,6 +122,7 @@ export function useGemini() {
 
     if (micMuted) {
       try {
+        micMutedRef.current = false;
         await audioInRef.current.connect();
         audioInRef.current.onChunk = (b64) => geminiRef.current?.sendAudio(b64);
         setMicMuted(false);
@@ -126,6 +130,7 @@ export function useGemini() {
         setError("Mic error: " + err.message);
       }
     } else {
+      micMutedRef.current = true;
       audioInRef.current.disconnect();
       setMicMuted(true);
     }
@@ -207,6 +212,7 @@ export function useGemini() {
     connect,
     disconnect,
     toggleMic,
+    addMessage,
     sendText,
     startCamera,
     stopCamera,

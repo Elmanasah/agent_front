@@ -8,6 +8,7 @@ import Canvas from '../components/Canvas';
 import ChatService from '../api/chat-services';
 import SessionService from '../api/session-services';
 import { useTheme } from '../context/ThemeContext';
+import ImageModal from '../components/ImageModal';
 
 export default function Dashboard() {
     const [messages, setMessages] = useState([]);
@@ -31,6 +32,9 @@ export default function Dashboard() {
 
     // Knowledge base
     const [isKBOpen, setIsKBOpen] = useState(false);
+
+    // Image Modal
+    const [selectedImage, setSelectedImage] = useState(null);
 
     // AbortController ref for in-flight SSE
     const abortRef = useRef(null);
@@ -94,8 +98,14 @@ export default function Dashboard() {
                 const result = event.result || {};
 
                 if (result.image) {
-                    setIsCanvasOpen(true);
-                    setCanvasContent(prev => [...prev, { type: 'image', value: result.image.url, title: result.image.prompt }]);
+                    setMessages(prev => [
+                        ...prev, 
+                        { 
+                            role: 'agent', 
+                            text: '', 
+                            attachments: [{ url: result.image.url, title: result.image.prompt }] 
+                        }
+                    ]);
                 }
                 if (result.canvas) {
                     setIsCanvasOpen(true);
@@ -236,18 +246,51 @@ export default function Dashboard() {
                 });
 
                 const display = [];
+                const canvas = [];
                 for (const msg of sorted) {
-                    const text = msg.parts?.map(p => p.text || '').join('') || '';
-                    if (!text.trim()) continue;
-                    display.push({ role: msg.role === 'model' ? 'agent' : 'user', text });
+                    if (msg.type === 'text') {
+                        const text = msg.parts?.map(p => p.text || '').join('') || '';
+                        if (!text.trim() && msg.role !== 'user') continue;
+                        display.push({ 
+                            id: msg.id,
+                            role: msg.role === 'model' ? 'agent' : 'user', 
+                            text 
+                        });
+                    } else {
+                        // Rich messages (images, diagrams, workspace content)
+                        if (msg.type === 'image') {
+                            display.push({ 
+                                id: msg.id,
+                                role: 'agent', 
+                                text: '', 
+                                attachments: [{ url: msg.content.url, title: msg.content.prompt }] 
+                            });
+                        } else if (msg.type === 'canvas') {
+                            canvas.push({ type: 'text', value: msg.content.markdown, title: msg.content.title });
+                        } else if (msg.type === 'diagram') {
+                            canvas.push({ type: 'mermaid', value: msg.content.syntax, title: msg.content.title });
+                        } else if (msg.type === 'math') {
+                            canvas.push({ type: 'math', value: msg.content.json, title: msg.content.title });
+                        } else if (msg.type === 'quiz') {
+                            canvas.push({ type: 'quiz', value: msg.content.json, title: msg.content.title });
+                        }
+                    }
                 }
                 setMessages(display);
-                setCanvasContent([]);
+                setCanvasContent(canvas);
+                if (canvas.length > 0) setIsCanvasOpen(true);
             }
         } catch (err) {
             console.error('[selectSession]', err.message);
         }
     };
+
+    // Auto-select session from location state if available
+    useEffect(() => {
+        if (location.state?.sessionId) {
+            selectSession(location.state.sessionId);
+        }
+    }, [location.state?.sessionId]);
 
     return (
         <div className="flex flex-col h-screen bg-transparent text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 selection:text-current overflow-hidden">
@@ -355,7 +398,11 @@ export default function Dashboard() {
                                         </div>
                                     ) : (
                                         <div className="max-w-3xl mx-auto">
-                                            <ChatWindow messages={messages} loading={loading && !activeTool} />
+                                            <ChatWindow 
+                                                messages={messages} 
+                                                loading={loading && !activeTool} 
+                                                onImageClick={(src, alt) => setSelectedImage({ src, alt })}
+                                            />
                                         </div>
                                     )}
                                 </div>
@@ -396,6 +443,12 @@ export default function Dashboard() {
                 </div>
             </main>
             <KnowledgeBase isOpen={isKBOpen} onClose={() => setIsKBOpen(false)} />
+            <ImageModal 
+                isOpen={!!selectedImage} 
+                onClose={() => setSelectedImage(null)} 
+                src={selectedImage?.src} 
+                alt={selectedImage?.alt} 
+            />
         </div>
     );
 }

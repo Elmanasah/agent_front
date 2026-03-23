@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 
-const ChatWindow = React.memo(function ChatWindow({ messages, loading }) {
+const ChatWindow = React.memo(function ChatWindow({ messages, loading, onImageClick }) {
     const bottomRef = useRef(null);
     const prevLengthRef = useRef(messages.length);
 
@@ -30,7 +30,12 @@ const ChatWindow = React.memo(function ChatWindow({ messages, loading }) {
                     key={msg.id || i}
                     className={i === lastIdx ? 'animate-bubble-entrance' : undefined}
                 >
-                    <MessageBubble role={msg.role} text={msg.text} attachments={msg.attachments} />
+                    <MessageBubble 
+                        role={msg.role} 
+                        text={msg.text} 
+                        attachments={msg.attachments} 
+                        onImageClick={onImageClick}
+                    />
                 </div>
             ))}
 
