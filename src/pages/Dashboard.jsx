@@ -143,8 +143,17 @@ export default function Dashboard() {
     }, [currentSessionId]);
 
     // ── Send message ───────────────────────────────────────────────────────────
+    const stopGeneration = useCallback(() => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+            abortRef.current = null;
+        }
+        setLoading(false);
+        setActiveTool(null);
+        setIsCanvasWriting(false);
+    }, []);
 
-    const sendMessage = async (text, attachments = []) => {
+    const sendMessage = async (text, attachments = [], hiddenPrompt = '') => {
         if (loading) return;
 
         // Cancel any running stream
@@ -172,7 +181,7 @@ export default function Dashboard() {
 
         try {
             await ChatService.streamChat({
-                message: text,
+                message: text + hiddenPrompt,
                 attachments: attachments.map(a => ({ data: a.data, mimeType: a.mimeType })),
                 sessionId: currentSessionId,
                 signal: controller.signal,
@@ -249,7 +258,15 @@ export default function Dashboard() {
                 const canvas = [];
                 for (const msg of sorted) {
                     if (msg.type === 'text') {
-                        const text = msg.parts?.map(p => p.text || '').join('') || '';
+                        let text = msg.parts?.map(p => p.text || '').join('') || '';
+                        if (msg.role === 'user') {
+                            text = text
+                                .replace('\n\nPlease put your final response in a ```canvas block.', '')
+                                .replace('\n\nPlease visualize this using a ```math block containing Mafs/TeX.', '')
+                                .replace('\n\nPlease create a visualization using a ```mermaid block.', '')
+                                .replace('\n\nPlease generate an image for this.', '')
+                                .replace('\n\nPlease create a quiz for this using a ```quiz block.', '');
+                        }
                         if (!text.trim() && msg.role !== 'user') continue;
                         display.push({ 
                             id: msg.id,
@@ -407,7 +424,7 @@ export default function Dashboard() {
                                     )}
                                 </div>
 
-                                <InputBar onSend={sendMessage} loading={loading} />
+                                <InputBar onSend={sendMessage} loading={loading} onStop={stopGeneration}/>
 
                                 <div className="pb-4 pt-1 text-center">
                                     <p className="text-[10px] text-slate-400 dark:text-slate-500 opacity-60">Horus may hallucinate ancient wisdom. Verify with facts.</p>
