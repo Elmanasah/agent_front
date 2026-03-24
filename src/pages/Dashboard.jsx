@@ -143,6 +143,15 @@ export default function Dashboard() {
     }, [currentSessionId]);
 
     // ── Send message ───────────────────────────────────────────────────────────
+    const stopGeneration = useCallback(() => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+            abortRef.current = null;
+        }
+        setLoading(false);
+        setActiveTool(null);
+        setIsCanvasWriting(false);
+    }, []);
 
     const sendMessage = async (text, attachments = []) => {
         if (loading) return;
@@ -407,7 +416,7 @@ export default function Dashboard() {
                                     )}
                                 </div>
 
-                                <InputBar onSend={sendMessage} loading={loading} />
+                                <InputBar onSend={sendMessage} loading={loading} onStop={stopGeneration}/>
 
                                 <div className="pb-4 pt-1 text-center">
                                     <p className="text-[10px] text-slate-400 dark:text-slate-500 opacity-60">Horus may hallucinate ancient wisdom. Verify with facts.</p>

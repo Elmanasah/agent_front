@@ -24,6 +24,8 @@ export function useGemini() {
   const videoRef = useRef(null);
   const screenRef = useRef(null);
   const micMutedRef = useRef(false);
+  const abortRef = useRef(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const addMessage = useCallback((role, text, attachments = []) => {
     setMessages((prev) => {
@@ -37,6 +39,15 @@ export function useGemini() {
       }
       return [...prev, { role, text, attachments, id: Date.now() + Math.random() }];
     });
+  }, []);
+
+  // ── stop current HTTP generation ──────────────────────────────
+  const stopGeneration = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    setIsGenerating(false);
   }, []);
 
   const connect = useCallback(
@@ -177,9 +188,15 @@ export function useGemini() {
         return;
       }
 
+      // ── SSE streaming path with abort support ─────────────
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setIsGenerating(true);
+
       // Fallback: SSE streaming chat (when live WebSocket is not connected)
       try {
         await ChatService.streamChat({
+          signal: controller.signal,
           message: text,
           attachments: attachments.map(a => ({ data: a.data, mimeType: a.mimeType })),
           onEvent: (event) => {
@@ -189,8 +206,13 @@ export function useGemini() {
           },
         });
       } catch (err) {
-        console.error('[sendText Error]:', err);
-        setError("Failed to send message: " + err.message);
+        if (err.name !== "AbortError") {
+          console.error('[sendText Error]:', err);
+          setError("Failed to send message: " + err.message);
+        }
+      } finally {
+        abortRef.current = null;
+        setIsGenerating(false);
       }
     },
     [addMessage]
@@ -209,6 +231,8 @@ export function useGemini() {
     messages,
     error,
     micMuted,
+    isGenerating,
+    stopGeneration,
     connect,
     disconnect,
     toggleMic,

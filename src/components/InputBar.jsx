@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
+import CameraCapture from './CameraCapture';
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-const InputBar = ({ onSend, loading, onGenerate }) => {
+const InputBar = ({ onSend, loading, onStop }) => {
     const [text, setText] = useState('');
     const [attachments, setAttachments] = useState([]);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [selectedTool, setSelectedTool] = useState(null);
+    const [isCameraOpen, setIsCameraOpen] = useState(false); // ★ Feature 2
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
     const toolsMenuRef = useRef(null);
@@ -207,6 +209,18 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
         e.target.value = ''; // Reset input
     };
 
+    // photo from CameraCapture
+    const handleCameraCapture = (base64, mimeType, previewUrl) => {
+        setAttachments(prev => [...prev, {
+            name: `photo-${Date.now()}.jpg`,
+            type: mimeType,
+            size: 0,
+            data: base64,
+            url: previewUrl,
+            isImage: true,
+        }]);
+    };
+
     const removeAttachment = (index) => {
         setAttachments(prev => {
             const updated = [...prev];
@@ -313,6 +327,13 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
 
     return (
         <div className="px-2 md:px-6 py-3 md:py-8 bg-transparent relative">
+            {/* camera modal */}
+            <CameraCapture
+                isOpen={isCameraOpen}
+                onClose={() => setIsCameraOpen(false)}
+                onCapture={handleCameraCapture}
+            />
+
             <div className="max-w-3xl mx-auto relative">
                 {/* Attachments Preview */}
                 {attachments.length > 0 && (
@@ -408,7 +429,6 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
                     />
 
                     <div className="flex items-center gap-1 self-center">
-                        
                         {/* Selected Tool Overlay */}
                         {selectedTool && (
                             <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-full animate-fade-in mr-1">
@@ -468,7 +488,18 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
                                 </div>
                             )}
                         </div>
-                        
+
+                        <button
+                            onClick={() => setIsCameraOpen(true)}
+                            className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                            title="Open Camera"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                <circle cx="12" cy="13" r="4"/>
+                            </svg>
+                        </button>
+
                         <button 
                             onClick={toggleRecording}
                             className={`w-8 h-8 rounded-full transition-colors flex items-center justify-center ${
@@ -480,25 +511,34 @@ const InputBar = ({ onSend, loading, onGenerate }) => {
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                         </button>
-                        
+
                         <button
-                            onClick={handleSend}
-                            disabled={(!text.trim() && attachments.length === 0) || loading}
-                            className={`w-8 h-8 rounded-full transition-all flex items-center justify-center shrink-0 ${
-                                text.trim() || attachments.length > 0
-                                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' 
-                                : 'bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                            type="button"
+                            onClick={loading ? onStop : handleSend}
+                            disabled={!loading && (!text.trim() && attachments.length === 0)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                                loading
+                                    ? 'bg-rose-500 text-white'
+                                    : text.trim() || attachments.length > 0
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                                        : 'bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                             }`}
+                            title={loading ? "Stop generating" : "Send"}
                         >
                             {loading ? (
-                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                // STOP ICON
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <rect x="6" y="6" width="12" height="12" rx="2" />
                                 </svg>
                             ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+                                // SEND ICON
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <path d="M22 2 11 13" />
+                                    <path d="m22 2-7 20-4-9-9-4 20-7z" />
+                                </svg>
                             )}
                         </button>
+
                     </div>
                 </div>
                 )}
