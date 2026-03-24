@@ -234,32 +234,26 @@ const InputBar = ({ onSend, loading, onStop }) => {
         const trimmed = text.trim();
         if ((!trimmed && attachments.length === 0) || loading) return;
         
-        let finalMessage = trimmed;
+        let hiddenPrompt = '';
         
         // Append hidden system instructions based on tool selection
         if (selectedTool === 'canvas') {
-            finalMessage += '\n\nPlease put your final response in a ```canvas block.';
+            hiddenPrompt = '\n\nPlease put your final response in a ```canvas block.';
         } else if (selectedTool === 'math') {
-            finalMessage += '\n\nPlease visualize this using a ```math block containing Mafs/TeX.';
+            hiddenPrompt = '\n\nPlease visualize this using a ```math block containing Mafs/TeX.';
         } else if (selectedTool === 'mermaid') {
-            finalMessage += '\n\nPlease create a visualization using a ```mermaid block.';
+            hiddenPrompt = '\n\nPlease create a visualization using a ```mermaid block.';
         } else if (selectedTool === 'image') {
-           // For images we will use the existing generate method to route to the image service
-           onGenerate(trimmed);
-           setText('');
-           baseTextRef.current = '';
-           if (textareaRef.current) {
-               textareaRef.current.style.height = 'auto';
-           }
-           setSelectedTool(null);
-           return;
+            hiddenPrompt = '\n\nPlease generate an image for this.';
+        } else if (selectedTool === 'quiz') {
+            hiddenPrompt = '\n\nPlease create a quiz for this using a ```quiz block.';
         }
 
         // Pass attachments to parent
-        onSend(finalMessage, attachments.map(a => ({
+        onSend(trimmed, attachments.map(a => ({
             data: a.data,
             mimeType: a.type
-        })));
+        })), hiddenPrompt);
 
         if (isRecording) {
             if (recognitionRef.current) {
@@ -304,6 +298,7 @@ const InputBar = ({ onSend, loading, onStop }) => {
             case 'canvas': return { name: 'Canvas', icon: <svg className="text-emerald-500" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg> };
             case 'math': return { name: 'Math Graph', icon: <svg className="text-blue-500" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> };
             case 'mermaid': return { name: 'Diagram', icon: <svg className="text-violet-500" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="8" x="8" y="8" rx="2"/><path d="M12 2v6"/><path d="M12 16v6"/><path d="M2 12h6"/><path d="M16 12h6"/></svg> };
+            case 'quiz': return { name: 'Quiz', icon: <svg className="text-pink-500" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> };
             default: return null;
         }
     };
@@ -483,6 +478,13 @@ const InputBar = ({ onSend, loading, onStop }) => {
                                         >
                                             <span className="text-[13px] font-medium">Diagram</span>
                                             <svg className="text-violet-500" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="8" x="8" y="8" rx="2"/><path d="M12 2v6"/><path d="M12 16v6"/><path d="M2 12h6"/><path d="M16 12h6"/></svg>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleToolSelect('quiz')}
+                                            className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 transition-colors text-left"
+                                        >
+                                            <span className="text-[13px] font-medium">Quiz</span>
+                                            <svg className="text-pink-500" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                         </button>
                                     </div>
                                 </div>
