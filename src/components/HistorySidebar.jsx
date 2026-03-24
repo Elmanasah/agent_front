@@ -140,7 +140,7 @@ export default function HistorySidebar({ history, currentSessionId, onSelectSess
                                 <div className="flex-1 min-w-0">
                                     <span className="truncate block">{session.title || 'Untitled'}</span>
                                     <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5">
-                                        {session.messageCount ?? 0} msgs · {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : ''}
+                                        {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : ''}
                                     </span>
                                 </div>
                             </button>

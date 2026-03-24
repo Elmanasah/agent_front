@@ -6,12 +6,12 @@ const MessageBubble = ({ role, text, attachments = [], onImageClick }) => {
     return (
         <div className={`flex items-start gap-4 mb-6 ${isUser ? 'flex-row-reverse ' : 'flex-row '}`}>
             {/* Avatar */}
-            <div className={`w-9 h-9 rounded-2xl flex items-center justify-center text-[10px] font-black tracking-tighter shrink-0 shadow-lg ${
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[10px] font-black tracking-tighter shrink-0 shadow-lg ${
                 isUser 
                     ? 'bg-indigo-600 shadow-indigo-500/20 text-white' 
                     : 'bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 shadow-black/5'
             }`}>
-                {isUser ? 'YOU' : 'AI'}
+                {isUser ? 'YOU' : 'HORUS'}
             </div>
 
             {/* Bubble */}

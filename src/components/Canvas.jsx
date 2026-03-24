@@ -5,6 +5,9 @@ import QuizRenderer from './QuizRenderer';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ErrorBoundary } from './ErrorBoundary';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
+
 
 // ── ArtifactCard lifted OUT of Canvas render ──────────────────────────────────
 // Defining a component INSIDE another component's render function causes React
@@ -67,10 +70,96 @@ const MathBlock = React.memo(function MathBlock({ value, title }) {
     );
 });
 
+// ── PDF export ─────────────────────────────────────────────────────
+
+/**
+ * Export a container element to PDF, preserving dark mode and interactive elements.
+ * Each child is rendered individually and split across pages if needed.
+ * @param {HTMLElement} container
+ */
+export async function exportToPDF(container) {
+  if (!container) return;
+
+  const children = Array.from(container.children);
+  if (!children.length) return;
+
+  const pdf = new jsPDF('p', 'px', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  let isFirstPage = true;
+
+  for (const child of children) {
+    // Clone the child to avoid messing with UI
+    const clone = child.cloneNode(true);
+    const originalBg = clone.style.backgroundColor;
+
+    // Force fallback background for dark/light mode
+    clone.style.backgroundColor =
+      getComputedStyle(child).backgroundColor ||
+      (document.documentElement.classList.contains('dark') ? '#0D0D0D' : '#ffffff');
+
+    // Offscreen wrapper
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '-9999px';
+    wrapper.style.left = '-9999px';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    try {
+      const dataUrl = await toPng(clone, {
+        filter: (node) => node.nodeName !== 'SCRIPT',
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: clone.style.backgroundColor,
+      });
+
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => (img.onload = resolve));
+
+      const scale = pageWidth / img.width;
+      const scaledWidth = img.width * scale;
+      const scaledHeight = img.height * scale;
+
+      // Multi-page slicing
+      let position = 0;
+      while (position < scaledHeight) {
+        const remainingHeight = scaledHeight - position;
+        const sliceHeight = remainingHeight > pageHeight ? pageHeight : remainingHeight;
+
+        if (!isFirstPage) pdf.addPage();
+        isFirstPage = false;
+
+        pdf.addImage(
+          dataUrl,
+          'PNG',
+          0,
+          -position, // offset for slice
+          scaledWidth,
+          scaledHeight
+        );
+
+        position += pageHeight;
+      }
+    } catch (err) {
+      console.error('PDF export failed for a child element:', err);
+    } finally {
+      document.body.removeChild(wrapper);
+      clone.style.backgroundColor = originalBg;
+    }
+  }
+
+  pdf.save(`horus-canvas-${Date.now()}.pdf`);
+}
+
+
 // ── Main Canvas ───────────────────────────────────────────────────────────────
 export default function Canvas({ content, isOpen, onClose, onClear, isWriting, width }) {
+    const contentRef = useRef(null);
     const scrollRef = useRef(null);
     const [isCopied, setIsCopied] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Stable width style — avoid calling window.innerWidth on every render
     const widthStyle = useMemo(
@@ -94,6 +183,15 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
             console.error('Failed to copy', err);
         }
     }, [content]);
+
+    // PDF export
+    const handleExportPDF = useCallback(async () => {
+        if (!contentRef.current || isExporting) return;
+        setIsExporting(true);
+        try { await exportToPDF(contentRef.current); }
+        catch (err) { console.error("PDF export failed:", err); alert("PDF export failed — please try again."); }
+        finally { setIsExporting(false); }
+    }, [isExporting]);
 
     // Auto-scroll to bottom when content grows
     useEffect(() => {
@@ -147,6 +245,28 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
                         </button>
                     )}
 
+                    {/* PDF export button */}
+                    {blocks.length > 0 && (
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={isExporting}
+                            className={`p-2 rounded-lg transition-all ${isExporting ? "text-indigo-500 animate-pulse" : "hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300"}`}
+                            title="Export to PDF"
+                        >
+                            {isExporting ? (
+                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                            ) : (
+                                /* PDF icon */
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14 2z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="12" y1="18" x2="12" y2="12"/>
+                                    <line x1="9" y1="15" x2="15" y2="15"/>
+                                </svg>
+                            )}
+                        </button>
+                    )}
+
                     <button
                         onClick={handleCopy}
                         className={`p-2 rounded-lg transition-all ${isCopied ? 'bg-emerald-500/10 text-emerald-500' : 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300'}`}
@@ -163,9 +283,10 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
 
             {/* ── Main Canvas Content Area ───────────────── */}
             <div
-                ref={scrollRef}
+                ref={contentRef}
                 className="flex-1 overflow-y-auto px-10 py-20 CustomScrollbar bg-transparent selection:bg-indigo-500/30 relative"
             >
+
                 <div className="max-w-2xl mx-auto">
                     {blocks.length === 0 && !isWriting ? (
                         <div className="h-[50vh] flex flex-col items-center justify-center text-center space-y-6 opacity-20 select-none">
