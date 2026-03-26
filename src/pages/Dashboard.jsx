@@ -9,6 +9,7 @@ import ChatService from '../api/chat-services';
 import SessionService from '../api/session-services';
 import { useTheme } from '../context/ThemeContext';
 import ImageModal from '../components/ImageModal';
+import { getMyUsage } from '../api/usage-services';
 
 export default function Dashboard() {
     const [messages, setMessages] = useState([]);
@@ -38,6 +39,30 @@ export default function Dashboard() {
 
     // AbortController ref for in-flight SSE
     const abortRef = useRef(null);
+
+    // ── Quota warning banner ───────────────────────────────────────────────────
+    const [quotaWarning, setQuotaWarning] = useState(null);   // null | { type, msg }
+    const [quotaDismissed, setQuotaDismissed] = useState(false);
+
+    useEffect(() => {
+        getMyUsage()
+            .then(usage => {
+                if (usage?.isLocked) {
+                    setQuotaWarning({ type: 'locked', msg: usage.lockReason || 'Your account is restricted. Contact support.' });
+                    return;
+                }
+                if (usage?.resources) {
+                    const labels = { images: 'Images', videos: 'Videos', apiCalls: 'API Calls', documents: 'Documents' };
+                    for (const [key, { used, limit }] of Object.entries(usage.resources)) {
+                        if (limit > 0 && used / limit >= 0.8) {
+                            setQuotaWarning({ type: 'low', msg: `You're running low on ${labels[key] || key}. Check Settings → Usage for your full quota.` });
+                            break;
+                        }
+                    }
+                }
+            })
+            .catch(() => {}); // silent — never interrupt the user
+    }, []);
 
     // ── Canvas resizing ────────────────────────────────────────────────────────
     const startResizing = useCallback((e) => { e.preventDefault(); setIsResizing(true); }, []);
@@ -344,6 +369,19 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex-1 flex flex-col relative overflow-hidden">
+
+                    {/* ── Quota Warning Banner ──────────────────────────── */}
+                    {quotaWarning && !quotaDismissed && (
+                        <div className={`px-6 py-2.5 border-b flex items-center gap-3 text-[11px] font-medium animate-fade-in z-30 ${
+                            quotaWarning.type === 'locked'
+                                ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                                : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                        }`}>
+                            <span>{quotaWarning.type === 'locked' ? '🔒' : '⚠️'}</span>
+                            <span className="flex-1">{quotaWarning.msg}</span>
+                            <button onClick={() => setQuotaDismissed(true)} className="opacity-60 hover:opacity-100 transition-opacity">✕</button>
+                        </div>
+                    )}
 
                     {/* ── Error Banner ─────────────────────────────────────── */}
                     {error && (
