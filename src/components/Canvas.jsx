@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { ErrorBoundary } from './ErrorBoundary';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import RobotModel from './RobotModel';
 
 
 // ── ArtifactCard lifted OUT of Canvas render ──────────────────────────────────
@@ -325,6 +326,12 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
                                         <ArtifactCard label="Knowledge Check" title={block.title}>
                                             <ErrorBoundary>
                                                 <QuizRenderer config={block.value} />
+                                            </ErrorBoundary>
+                                        </ArtifactCard>
+                                    ) : block.type === '3d-model' ? (
+                                        <ArtifactCard label="3D Visualization" title={block.title}>
+                                            <ErrorBoundary>
+                                                <RobotModel />
                                             </ErrorBoundary>
                                         </ArtifactCard>
                                     ) : (

@@ -10,6 +10,7 @@ import Settings from '../pages/Settings';
 import AdminPanel from '../pages/AdminPanel';
 import ForgotPassword from '../pages/ForgotPassword';
 import VerifyOtp from '../pages/VerifyOtp';
+import RobotModel from '../components/RobotModel';
 import ResetPassword from '../pages/ResetPassword';
 import { ThemeProvider } from '../context/ThemeContext';
 
@@ -71,6 +72,7 @@ export default function AppRoutes() {
                     }
                 />
 
+                <Route path="/test-3d" element={<RobotModel />} />
             </Route>
         </Routes>
     );
