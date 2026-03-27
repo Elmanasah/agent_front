@@ -12,6 +12,7 @@ import ForgotPassword from '../pages/ForgotPassword';
 import VerifyOtp from '../pages/VerifyOtp';
 import RobotModel from '../components/RobotModel';
 import ResetPassword from '../pages/ResetPassword';
+import NotFound from '../pages/NotFound';
 import { ThemeProvider } from '../context/ThemeContext';
 
 // Wraps all routes in ThemeProvider so both public and protected pages
@@ -72,7 +73,10 @@ export default function AppRoutes() {
                     }
                 />
 
-                <Route path="/test-3d" element={<RobotModel />} />
+                {/* <Route path="/test-3d" element={<RobotModel />} /> */}
+
+                {/* ── Catch-all route ─────────────────────────── */}
+                <Route path="*" element={<NotFound />} />
             </Route>
         </Routes>
     );
