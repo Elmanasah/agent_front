@@ -12,6 +12,8 @@ import TokenService from "../api/token-services";
 import ImageService from "../api/image-services";
 import { useTheme } from "../context/ThemeContext";
 import ImageModal from "./ImageModal";
+import RobotModel from "./RobotModel";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export default function WebsocketChat() {
   const navigate = useNavigate();
@@ -26,6 +28,9 @@ export default function WebsocketChat() {
   const [isResizing, setIsResizing] = useState(false);
   const [showVision, setShowVision] = useState(false);
   const [selectedCamera, setSelectedCamera] = useState("");
+
+  const [robotAction, setRobotAction] = useState('Idle');
+  const [robotExpressions, setRobotExpressions] = useState({});
 
   // Image Modal
   const [selectedImage, setSelectedImage] = useState(null);
@@ -139,6 +144,12 @@ export default function WebsocketChat() {
       if (result.quiz) {
         setIsCanvasOpen(true);
         setCanvasContent(prev => [...prev, { type: 'quiz', value: result.quiz.json, title: result.quiz.title }]);
+      }
+      if (result.robot) {
+        setRobotAction(result.robot.action);
+        if (result.robot.expressions) {
+          setRobotExpressions(result.robot.expressions);
+        }
       }
     }
     clearToolResults();
@@ -377,6 +388,16 @@ export default function WebsocketChat() {
                 >
                   ✕
                 </button>
+              </div>
+
+              {/* ── Visual Persona ── */}
+              <div className="h-full border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 relative overflow-hidden flex items-center justify-center">
+                <ErrorBoundary>
+                  <RobotModel 
+                    action={robotAction} 
+                    expressions={robotExpressions} 
+                  />
+                </ErrorBoundary>
               </div>
 
               {/* ── Chat Area ─────────────────────────────────── */}

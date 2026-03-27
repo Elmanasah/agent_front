@@ -1,11 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GUI } from 'lil-gui';
 import Stats from 'stats.js';
 
-const RobotModel = () => {
+const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
     const containerRef = useRef();
+    const mixerRef = useRef();
+    const actionsRef = useRef({});
+    const activeActionRef = useRef();
+    const faceRef = useRef();
 
     useEffect(() => {
         let stats, gui, mixer, actions, activeAction, previousAction;
@@ -20,8 +25,8 @@ const RobotModel = () => {
             camera.lookAt(0, 2, 0);
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xe0e0e0);
-            scene.fog = new THREE.Fog(0xe0e0e0, 20, 100);
+            // scene.background = new THREE.Color(0xe0e0e0);
+            // scene.fog = new THREE.Fog(0xe0e0e0, 20, 100);
 
             // Lights
             const hemiLight = new THREE.HemisphereLight(0xffffff, 0x8d8d8d, 3);
@@ -50,16 +55,22 @@ const RobotModel = () => {
             loader.load('/models/RobotExpressive.glb', (gltf) => {
                 model = gltf.scene;
                 scene.add(model);
+                setupMixer(model, gltf.animations); // Setup mixer and actions first
                 createGUI(model, gltf.animations);
             }, undefined, (e) => {
                 console.error(e);
             });
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setAnimationLoop(animate);
             container.appendChild(renderer.domElement);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.target.set(0, 2, 0);
+            controls.update();
 
             // Stats
             stats = new Stats();
@@ -79,19 +90,8 @@ const RobotModel = () => {
             gui.domElement.style.top = '0px';
             gui.domElement.style.right = '0px';
 
-            mixer = new THREE.AnimationMixer(model);
-            actions = {};
-
-            for (let i = 0; i < animations.length; i++) {
-                const clip = animations[i];
-                const action = mixer.clipAction(clip);
-                actions[clip.name] = action;
-
-                if (emotes.indexOf(clip.name) >= 0 || states.indexOf(clip.name) >= 4) {
-                    action.clampWhenFinished = true;
-                    action.loop = THREE.LoopOnce;
-                }
-            }
+            // Actions are already set up by setupMixer, retrieve them
+            actions = actionsRef.current;
 
             // States
             const statesFolder = gui.addFolder('States');
@@ -108,13 +108,13 @@ const RobotModel = () => {
             function createEmoteCallback(name) {
                 api[name] = () => {
                     fadeToAction(name, 0.2);
-                    mixer.addEventListener('finished', restoreState);
+                    mixerRef.current.addEventListener('finished', restoreState);
                 };
                 emoteFolder.add(api, name);
             }
 
             function restoreState() {
-                mixer.removeEventListener('finished', restoreState);
+                mixerRef.current.removeEventListener('finished', restoreState);
                 fadeToAction(api.state, 0.2);
             }
 
@@ -126,6 +126,7 @@ const RobotModel = () => {
 
             // Expressions
             face = model.getObjectByName('Head_4');
+            faceRef.current = face;
             if (face) {
                 const expressions = Object.keys(face.morphTargetDictionary);
                 const expressionFolder = gui.addFolder('Expressions');
@@ -134,14 +135,38 @@ const RobotModel = () => {
                 }
                 expressionFolder.open();
             }
+        };
 
-            activeAction = actions['Walking'];
-            if (activeAction) activeAction.play();
+        const setupMixer = (model, animations) => {
+            const states = ['Idle', 'Walking', 'Running', 'Dance', 'Death', 'Sitting', 'Standing'];
+            const emotes = ['Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp'];
+
+            mixer = new THREE.AnimationMixer(model);
+            mixerRef.current = mixer;
+            actions = {};
+
+            for (let i = 0; i < animations.length; i++) {
+                const clip = animations[i];
+                const action = mixer.clipAction(clip);
+                actions[clip.name] = action;
+
+                if (emotes.indexOf(clip.name) >= 0 || states.indexOf(clip.name) >= 4) {
+                    action.clampWhenFinished = true;
+                    action.loop = THREE.LoopOnce;
+                }
+            }
+            actionsRef.current = actions;
+            
+            // Initial Active Action if not already set by GUI
+            if (!activeActionRef.current) {
+                activeActionRef.current = actions['Walking'];
+                if (activeActionRef.current) activeActionRef.current.play();
+            }
         };
 
         const fadeToAction = (name, duration) => {
-            previousAction = activeAction;
-            activeAction = actions[name];
+            previousAction = activeActionRef.current; // Use ref for previous action
+            activeAction = actionsRef.current[name]; // Use ref for actions
 
             if (previousAction && previousAction !== activeAction) {
                 previousAction.fadeOut(duration);
@@ -154,6 +179,7 @@ const RobotModel = () => {
                     .setEffectiveWeight(1)
                     .fadeIn(duration)
                     .play();
+                activeActionRef.current = activeAction;
             }
         };
 
@@ -168,7 +194,7 @@ const RobotModel = () => {
         const clock = new THREE.Clock();
         const animate = () => {
             const dt = clock.getDelta();
-            if (mixer) mixer.update(dt);
+            if (mixerRef.current) mixerRef.current.update(dt);
             renderer.render(scene, camera);
             if (stats) stats.update();
         };
@@ -187,10 +213,51 @@ const RobotModel = () => {
         };
     }, []);
 
+    // Handle Action Prop Changes
+    useEffect(() => {
+        if (!propAction || !actionsRef.current[propAction]) return;
+
+        const fadeToAction = (name, duration) => {
+            const previousAction = activeActionRef.current;
+            const newAction = actionsRef.current[name];
+
+            if (previousAction && previousAction !== newAction) {
+                previousAction.fadeOut(duration);
+            }
+
+            if (newAction) {
+                newAction
+                    .reset()
+                    .setEffectiveTimeScale(1)
+                    .setEffectiveWeight(1)
+                    .fadeIn(duration)
+                    .play();
+                activeActionRef.current = newAction;
+            }
+        };
+
+        fadeToAction(propAction, 0.5);
+    }, [propAction]);
+
+    // Handle Expressions Prop Changes
+    useEffect(() => {
+        if (!propExpressions || !faceRef.current) return;
+
+        const face = faceRef.current;
+        const expressions = face.morphTargetDictionary;
+        
+        Object.entries(propExpressions).forEach(([name, value]) => {
+            const index = expressions[name];
+            if (index !== undefined) {
+                face.morphTargetInfluences[index] = value;
+            }
+        });
+    }, [propExpressions]);
+
     return (
         <div 
             ref={containerRef} 
-            className="relative w-full h-[500px] rounded-3xl overflow-hidden border border-slate-200 dark:border-white/5 shadow-inner bg-[#e0e0e0]"
+            className="relative w-full h-full overflow-hidden bg-transparent"
         />
     );
 };

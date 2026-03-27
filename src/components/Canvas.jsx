@@ -328,12 +328,6 @@ export default function Canvas({ content, isOpen, onClose, onClear, isWriting, w
                                                 <QuizRenderer config={block.value} />
                                             </ErrorBoundary>
                                         </ArtifactCard>
-                                    ) : block.type === '3d-model' ? (
-                                        <ArtifactCard label="3D Visualization" title={block.title}>
-                                            <ErrorBoundary>
-                                                <RobotModel />
-                                            </ErrorBoundary>
-                                        </ArtifactCard>
                                     ) : (
                                         <div className="font-sans py-4 prose prose-slate dark:prose-invert max-w-none prose-pre:bg-slate-100 dark:prose-pre:bg-white/5 prose-pre:p-4 prose-p:leading-relaxed prose-a:text-indigo-500">
                                             <ErrorBoundary>
