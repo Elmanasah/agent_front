@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GUI } from 'lil-gui';
 import Stats from 'stats.js';
+import { useTheme } from '../context/ThemeContext';
 
 const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
     const containerRef = useRef();
@@ -11,51 +11,62 @@ const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
     const actionsRef = useRef({});
     const activeActionRef = useRef();
     const faceRef = useRef();
+    const { theme } = useTheme();
+    const sceneRef = useRef();
+    const gridRef = useRef();
+    const groundRef = useRef();
 
     useEffect(() => {
-        let stats, gui, mixer, actions, activeAction, previousAction;
+        let stats, gui, mixer, actions, activeAction;
         let camera, scene, renderer, model, face;
         const api = { state: 'Walking' };
 
         const init = () => {
             const container = containerRef.current;
+            const isDark = theme === 'dark';
 
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.25, 100);
             camera.position.set(-5, 3, 10);
             camera.lookAt(0, 2, 0);
 
             scene = new THREE.Scene();
-            // scene.background = new THREE.Color(0xe0e0e0);
-            // scene.fog = new THREE.Fog(0xe0e0e0, 20, 100);
+            sceneRef.current = scene;
 
             // Lights
-            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x8d8d8d, 3);
+            const groundColor = isDark ? 0x0f172a : 0x8d8d8d;
+            const skyColor = isDark ? 0x1e293b : 0xffffff;
+            const hemiLight = new THREE.HemisphereLight(skyColor, groundColor, isDark ? 1.5 : 3);
             hemiLight.position.set(0, 20, 0);
             scene.add(hemiLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 3);
+            const dirLight = new THREE.DirectionalLight(0xffffff, isDark ? 1 : 3);
             dirLight.position.set(0, 20, 10);
             scene.add(dirLight);
 
             // Ground
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(2000, 2000),
-                new THREE.MeshPhongMaterial({ color: 0xcbcbcb, depthWrite: false })
+                new THREE.MeshPhongMaterial({ 
+                    color: isDark ? 0x020617 : 0xf1f5f9, 
+                    depthWrite: false 
+                })
             );
             mesh.rotation.x = -Math.PI / 2;
             scene.add(mesh);
+            groundRef.current = mesh;
 
-            const grid = new THREE.GridHelper(200, 40, 0x000000, 0x000000);
-            grid.material.opacity = 0.2;
+            const grid = new THREE.GridHelper(200, 40, isDark ? 0x334155 : 0x94a3b8, isDark ? 0x1e293b : 0xe2e8f0);
+            grid.material.opacity = isDark ? 0.2 : 0.5;
             grid.material.transparent = true;
             scene.add(grid);
+            gridRef.current = grid;
 
             // Model
             const loader = new GLTFLoader();
             loader.load('/models/RobotExpressive.glb', (gltf) => {
                 model = gltf.scene;
                 scene.add(model);
-                setupMixer(model, gltf.animations); // Setup mixer and actions first
+                setupMixer(model, gltf.animations);
                 createGUI(model, gltf.animations);
             }, undefined, (e) => {
                 console.error(e);
@@ -67,18 +78,18 @@ const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
             renderer.setAnimationLoop(animate);
             container.appendChild(renderer.domElement);
 
-            const controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.target.set(0, 2, 0);
-            controls.update();
-
             // Stats
             stats = new Stats();
             stats.dom.style.position = 'absolute';
             stats.dom.style.top = '0px';
             container.appendChild(stats.dom);
 
-            window.addEventListener('resize', onWindowResize);
+            const resizeObserver = new ResizeObserver(() => onWindowResize());
+            resizeObserver.observe(container);
+            
+            return () => {
+                resizeObserver.disconnect();
+            };
         };
 
         const createGUI = (model, animations) => {
@@ -90,7 +101,6 @@ const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
             gui.domElement.style.top = '0px';
             gui.domElement.style.right = '0px';
 
-            // Actions are already set up by setupMixer, retrieve them
             actions = actionsRef.current;
 
             // States
@@ -125,7 +135,12 @@ const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
             emoteFolder.open();
 
             // Expressions
-            face = model.getObjectByName('Head_4');
+            // Expressions - find mesh with morph targets
+            model.traverse((child) => {
+                if (child.isMesh && child.morphTargetDictionary) {
+                    face = child;
+                }
+            });
             faceRef.current = face;
             if (face) {
                 const expressions = Object.keys(face.morphTargetDictionary);
@@ -157,35 +172,19 @@ const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
             }
             actionsRef.current = actions;
             
-            // Initial Active Action if not already set by GUI
             if (!activeActionRef.current) {
                 activeActionRef.current = actions['Walking'];
                 if (activeActionRef.current) activeActionRef.current.play();
             }
-        };
 
-        const fadeToAction = (name, duration) => {
-            previousAction = activeActionRef.current; // Use ref for previous action
-            activeAction = actionsRef.current[name]; // Use ref for actions
-
-            if (previousAction && previousAction !== activeAction) {
-                previousAction.fadeOut(duration);
-            }
-
-            if (activeAction) {
-                activeAction
-                    .reset()
-                    .setEffectiveTimeScale(1)
-                    .setEffectiveWeight(1)
-                    .fadeIn(duration)
-                    .play();
-                activeActionRef.current = activeAction;
+            if (propAction && actions[propAction]) {
+                fadeToAction(propAction, 0);
             }
         };
 
         const onWindowResize = () => {
             const container = containerRef.current;
-            if (!container) return;
+            if (!container || !camera || !renderer) return;
             camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(container.clientWidth, container.clientHeight);
@@ -202,7 +201,6 @@ const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
         init();
 
         return () => {
-            window.removeEventListener('resize', onWindowResize);
             if (gui) gui.destroy();
             if (renderer) {
                 renderer.dispose();
@@ -213,30 +211,54 @@ const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
         };
     }, []);
 
+    const fadeToAction = (name, duration) => {
+        const previousAction = activeActionRef.current;
+        const newAction = actionsRef.current[name];
+
+        if (!newAction || previousAction === newAction) return;
+
+        if (previousAction) {
+            previousAction.fadeOut(duration);
+        }
+
+        newAction
+            .reset()
+            .setEffectiveTimeScale(1)
+            .setEffectiveWeight(1)
+            .fadeIn(duration)
+            .play();
+        activeActionRef.current = newAction;
+    };
+
+    // Handle Theme Changes
+    useEffect(() => {
+        if (!groundRef.current || !gridRef.current || !sceneRef.current) return;
+        
+        const isDark = theme === 'dark';
+        groundRef.current.material.color.setHex(isDark ? 0x020617 : 0xf1f5f9);
+        
+        const grid = gridRef.current;
+        grid.material.color.setHex(isDark ? 0x334155 : 0x94a3b8);
+        grid.material.opacity = isDark ? 0.2 : 0.5;
+
+        // Update lights
+        sceneRef.current.traverse((child) => {
+            if (child.isHemisphereLight) {
+                child.color.setHex(isDark ? 0x1e293b : 0xffffff);
+                child.groundColor.setHex(isDark ? 0x0f172a : 0x8d8d8d);
+                child.intensity = isDark ? 1.5 : 3;
+            }
+            if (child.isDirectionalLight) {
+                child.intensity = isDark ? 1 : 3;
+            }
+        });
+    }, [theme]);
+
     // Handle Action Prop Changes
     useEffect(() => {
-        if (!propAction || !actionsRef.current[propAction]) return;
-
-        const fadeToAction = (name, duration) => {
-            const previousAction = activeActionRef.current;
-            const newAction = actionsRef.current[name];
-
-            if (previousAction && previousAction !== newAction) {
-                previousAction.fadeOut(duration);
-            }
-
-            if (newAction) {
-                newAction
-                    .reset()
-                    .setEffectiveTimeScale(1)
-                    .setEffectiveWeight(1)
-                    .fadeIn(duration)
-                    .play();
-                activeActionRef.current = newAction;
-            }
-        };
-
-        fadeToAction(propAction, 0.5);
+        if (propAction) {
+            fadeToAction(propAction, 0.5);
+        }
     }, [propAction]);
 
     // Handle Expressions Prop Changes
@@ -245,10 +267,19 @@ const RobotModel = ({ action: propAction, expressions: propExpressions }) => {
 
         const face = faceRef.current;
         const expressions = face.morphTargetDictionary;
+        if (!expressions) return;
+        
+        // Reset all morph targets first for a clean state
+        face.morphTargetInfluences.fill(0);
         
         Object.entries(propExpressions).forEach(([name, value]) => {
-            const index = expressions[name];
-            if (index !== undefined) {
+            // Case-insensitive lookup
+            const targetName = Object.keys(expressions).find(
+                k => k.toLowerCase() === name.toLowerCase()
+            );
+            
+            if (targetName !== undefined) {
+                const index = expressions[targetName];
                 face.morphTargetInfluences[index] = value;
             }
         });

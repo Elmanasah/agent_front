@@ -391,7 +391,7 @@ export default function WebsocketChat() {
               </div>
 
               {/* ── Visual Persona ── */}
-              <div className="h-full border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 relative overflow-hidden flex items-center justify-center">
+              <div className="flex-1 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 relative overflow-hidden flex items-center justify-center">
                 <ErrorBoundary>
                   <RobotModel 
                     action={robotAction} 
@@ -400,14 +400,14 @@ export default function WebsocketChat() {
                 </ErrorBoundary>
               </div>
 
-              {/* ── Chat Area ─────────────────────────────────── */}
+              {/* ── Chat Area ───────────────────────────────────
               <div className="flex-1 overflow-hidden flex flex-col relative">
                 <ChatWindow
                   messages={messages}
                   loading={status === "connecting"}
                   onImageClick={(src, alt) => setSelectedImage({ src, alt })}
                 />
-              </div>
+              </div> */}
 
               {/* ── Input Bar ─────────────────────────────────── */}
               <div className="p-4 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
